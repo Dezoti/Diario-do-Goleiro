@@ -14,7 +14,7 @@ no próprio aparelho.
 - **Novo jogo** com leitura de print, placar, resultado automático, contadores de gols e defesas, nota e observações.
 - **Importar vários prints** de uma vez: cada print vira um jogo pendente para completar depois.
 - **Backup** em JSON (exportar e importar) e **planilha CSV**.
-- Funciona offline depois da primeira abertura e pode ser instalado na tela inicial (PWA).
+- Funciona offline depois da primeira abertura e pode ser instalado na tela inicial (PWA), com guia de instalação dentro do app (Android e iPhone) e botão para compartilhar o link.
 
 ## Rodar no computador
 

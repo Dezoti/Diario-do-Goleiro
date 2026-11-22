@@ -36,6 +36,25 @@ h1 { margin: 0; font-size: 34px; line-height: 1.05; letter-spacing: -.02em; }
 .icon-btn svg circle[r="1.6"] { fill: var(--text); stroke: none; }
 .icon-btn:active { background: var(--surface-2); }
 
+/* Aviso de instalação */
+.install-banner { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 12px; align-items: center; margin-bottom: 14px; padding: 14px 8px 14px 16px; border-radius: var(--radius); background: var(--green-soft); border: 1px solid rgba(34, 211, 90, .35); }
+.install-icon { font-size: 26px; }
+.install-text { display: grid; min-width: 0; line-height: 1.3; }
+.install-text strong { font-size: 16px; }
+.install-text span { color: var(--muted); font-size: 13px; }
+.install-go { grid-column: 1 / -1; margin-right: 8px; padding: 12px 14px; border: 0; border-radius: 12px; background: var(--green); color: #05220f; font-weight: 800; font-size: 15px; }
+.install-x { grid-column: 3; grid-row: 1; align-self: start; width: 36px; height: 36px; border: 0; background: transparent; color: var(--muted); font-size: 26px; line-height: 1; }
+
+/* Guia de instalação */
+.steps { margin: 4px 0 14px; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: center; padding: 12px 14px 12px 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.steps li::before { content: counter(s); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--green-soft); color: var(--green); font-weight: 800; }
+.steps b { color: var(--green); font-weight: 700; }
+.install-now { width: 100%; margin-bottom: 14px; }
+.share-box { margin-top: 18px; padding: 16px; border-radius: 16px; border: 1px dashed var(--line); text-align: center; }
+.share-box p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+.share-btn { width: 100%; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); }
+
 /* Resumo */
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 12px 12px; min-width: 0; }

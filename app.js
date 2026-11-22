@@ -445,8 +445,105 @@
     } catch (err) { toast('Esse arquivo não parece um backup válido.'); }
   });
 
+
+  /* ---------- Instalação e compartilhamento ---------- */
+  var DISMISS_KEY = 'diario-goleiro:install-dismissed';
+  var deferredPrompt = null;
+  var installSheet = $('#installSheet');
+
+  function isStandalone() {
+    return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  }
+  function platform() {
+    var ua = navigator.userAgent || '';
+    if (/iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
+    if (/android/i.test(ua)) return 'android';
+    return 'desktop';
+  }
+  function dismissed() { try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch (e) { return false; } }
+
+  function updateInstallBanner() {
+    $('#installBanner').hidden = isStandalone() || dismissed() || platform() === 'desktop';
+  }
+
+  function fillInstallSheet() {
+    var p = platform(), steps, intro, note = '';
+    if (isStandalone()) {
+      intro = 'O app já está instalado neste aparelho. 🎉';
+      steps = [];
+    } else if (p === 'ios') {
+      intro = 'No iPhone, a instalação é feita pelo Safari.';
+      steps = ['Abra este endereço no <b>Safari</b>.',
+               'Toque no botão <b>Compartilhar</b> (o quadrado com a seta para cima).',
+               'Role a lista e toque em <b>Adicionar à Tela de Início</b>.',
+               'Toque em <b>Adicionar</b>. O ícone aparece na tela inicial.'];
+      note = 'Se o botão Compartilhar não mostrar essa opção, você provavelmente está em outro navegador. Abra o endereço no Safari.';
+    } else if (p === 'android') {
+      intro = 'Funciona no Chrome, Brave, Edge e Samsung Internet.';
+      steps = ['Toque no menu <b>⋮</b> do navegador (três pontinhos).',
+               'Escolha <b>Instalar aplicativo</b> ou <b>Adicionar à tela inicial</b>.',
+               'Confirme. O ícone aparece na tela inicial.'];
+      note = 'Dica: se você usa o Brave, desligue o Shields neste site caso a leitura de print não funcione.';
+    } else {
+      intro = 'O app foi feito para o celular. Abra este endereço no seu celular para instalar.';
+      steps = ['No celular, abra: <b>' + esc(location.href.split('#')[0]) + '</b>',
+               'Siga o passo a passo que aparece lá (menu do navegador → Instalar aplicativo).'];
+      note = 'No computador, o Chrome também oferece um ícone de instalar na barra de endereço.';
+    }
+    $('#installIntro').textContent = intro;
+    $('#installSteps').innerHTML = steps.map(function (t) { return '<li><span>' + t + '</span></li>'; }).join('');
+    $('#installNote').textContent = note;
+    $('#installNote').hidden = !note;
+    $('#installNow').hidden = !deferredPrompt || isStandalone();
+  }
+
+  function openInstall() {
+    fillInstallSheet();
+    var menuEl = $('#menu'); if (menuEl.open) menuEl.close();
+    installSheet.showModal();
+  }
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); deferredPrompt = e;
+    if (installSheet.open) fillInstallSheet();
+  });
+  window.addEventListener('appinstalled', function () {
+    deferredPrompt = null; updateInstallBanner();
+    if (installSheet.open) installSheet.close();
+    toast('App instalado! Abra pelo ícone na tela inicial.');
+  });
+
+  $('#installGo').addEventListener('click', openInstall);
+  $('#mInstall').addEventListener('click', openInstall);
+  $('#installClose').addEventListener('click', function () { installSheet.close(); });
+  installSheet.addEventListener('click', function (e) { if (e.target === installSheet) installSheet.close(); });
+  $('#installX').addEventListener('click', function () {
+    try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) { /* ignora */ }
+    updateInstallBanner();
+    toast('Você pode instalar depois pelo menu ⋯.');
+  });
+  $('#installNow').addEventListener('click', async function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    try { await deferredPrompt.userChoice; } catch (e) { /* ignora */ }
+    deferredPrompt = null; fillInstallSheet();
+  });
+  $('#shareApp').addEventListener('click', async function () {
+    var url = location.href.split('#')[0];
+    var data = { title: 'Diário do Goleiro', text: 'Registre os resultados dos seus jogos de goleiro:', url: url };
+    try {
+      if (navigator.share) { await navigator.share(data); return; }
+      await navigator.clipboard.writeText(url);
+      toast('Link copiado!');
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      toast('Copie o endereço na barra do navegador: ' + url);
+    }
+  });
+
   /* ---------- Início ---------- */
   render();
+  updateInstallBanner();
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }

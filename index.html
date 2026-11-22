@@ -30,6 +30,12 @@
   </header>
 
   <main>
+    <aside class="install-banner" id="installBanner" hidden>
+      <div class="install-icon" aria-hidden="true">📲</div>
+      <div class="install-text"><strong>Instale na tela inicial</strong><span>Abre em tela cheia, como um app, e funciona sem internet.</span></div>
+      <button class="install-go" id="installGo">Como instalar</button>
+      <button class="install-x" id="installX" aria-label="Dispensar">×</button>
+    </aside>
     <section class="stats" id="stats" aria-label="Resumo"></section>
     <nav class="chips" id="chips" aria-label="Filtro"></nav>
     <section class="list" id="list" aria-live="polite"></section>
@@ -111,9 +117,25 @@
       <button type="button" class="icon-btn" id="btnMenuClose" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <p class="hint">Os jogos ficam salvos neste aparelho. Faça um backup de vez em quando.</p>
+    <button class="menu-item" id="mInstall">Instalar o app / compartilhar</button>
     <button class="menu-item" id="mExportJson">Exportar backup (JSON)</button>
     <button class="menu-item" id="mImportJson">Importar backup (JSON)</button>
     <button class="menu-item" id="mExportCsv">Exportar planilha (CSV)</button>
+  </dialog>
+
+  <!-- Guia de instalação -->
+  <dialog id="installSheet" class="sheet menu">
+    <div class="sheet-head"><h2>Instalar o app</h2>
+      <button type="button" class="icon-btn" id="installClose" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="hint" id="installIntro"></p>
+    <button class="btn primary install-now" id="installNow" hidden>Instalar agora</button>
+    <ol class="steps" id="installSteps"></ol>
+    <p class="hint" id="installNote"></p>
+    <div class="share-box">
+      <p>Conhece outro goleiro? Mande o link do app.</p>
+      <button class="btn share-btn" id="shareApp">Compartilhar o app</button>
+    </div>
   </dialog>
 
   <div class="busy" id="busy" hidden><div class="busy-card"><div class="spinner" aria-hidden="true"></div><p id="busyText">Lendo print…</p><div class="bar"><i id="busyBar"></i></div></div></div>
