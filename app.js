@@ -1,0 +1,453 @@
+(function () {
+  'use strict';
+
+  var KEY = 'diario-goleiro:v1';
+  var TESSERACT_SRC = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  var FIELD_TYPES = ['Society Fut5/Fut7', 'Society', 'Futsal', 'Campo', 'Areia', 'Grama sintética'];
+  var MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  var WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  var RESULT_LABEL = { V: 'Vitória', E: 'Empate', D: 'Derrota' };
+
+  var $ = function (s) { return document.querySelector(s); };
+  var games = load();
+  var filter = 'all';
+  var editingId = null;
+  var draft = {};
+
+  /* ---------- Dados ---------- */
+  function load() {
+    try {
+      var a = JSON.parse(localStorage.getItem(KEY) || '[]');
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  }
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(games)); }
+    catch (e) { toast('Não consegui salvar neste aparelho.'); }
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function isNum(v) { return typeof v === 'number' && isFinite(v); }
+  function toNum(v) { return v === '' || v == null ? null : (isFinite(Number(v)) ? Number(v) : null); }
+
+  /* ---------- Utilidades ---------- */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmt(n) { return n.toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
+  function parseISO(iso) {
+    var p = String(iso).split('-');
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
+  function sortKey(g) { return (g.date || '') + ' ' + (g.time || ''); }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3800);
+  }
+
+  function busy(text, progress) {
+    $('#busy').hidden = false;
+    $('#busyText').textContent = text;
+    $('#busyBar').style.width = Math.round((progress || 0) * 100) + '%';
+  }
+  function unbusy() { $('#busy').hidden = true; }
+
+  /* ---------- Resumo ---------- */
+  function renderStats() {
+    var c = { V: 0, E: 0, D: 0 };
+    games.forEach(function (g) { if (g.result) c[g.result]++; });
+    var decided = c.V + c.E + c.D;
+    var sum = function (k) { return games.reduce(function (a, g) { return a + (isNum(g[k]) ? g[k] : 0); }, 0); };
+    var avg = function (k) {
+      var v = games.filter(function (g) { return isNum(g[k]); });
+      return v.length ? v.reduce(function (a, g) { return a + g[k]; }, 0) / v.length : null;
+    };
+    var rating = avg('rating'), conc = avg('goalsConceded');
+    var pct = function (n) { return decided ? (n / decided) * 100 : 0; };
+
+    $('#stats').innerHTML =
+      '<div class="stat hero">' +
+        '<div class="record">' +
+          '<div class="v"><small>Vitórias</small><strong>' + c.V + '</strong></div>' +
+          '<div class="e"><small>Empates</small><strong>' + c.E + '</strong></div>' +
+          '<div class="d"><small>Derrotas</small><strong>' + c.D + '</strong></div>' +
+        '</div>' +
+        '<div class="bar-result" aria-hidden="true">' +
+          '<i class="v" style="width:' + pct(c.V) + '%"></i><i class="e" style="width:' + pct(c.E) + '%"></i><i class="d" style="width:' + pct(c.D) + '%"></i>' +
+        '</div>' +
+      '</div>' +
+      tile('Jogos', games.length) +
+      tile('Nota média', rating == null ? '–' : fmt(rating) + ' <i>/30</i>') +
+      tile('Defesas', sum('saves')) +
+      tile('Gols sofridos', sum('goalsConceded')) +
+      tile('Sofridos/jogo', conc == null ? '–' : fmt(conc)) +
+      tile('Gols marcados', sum('goalsScored'));
+  }
+  function tile(label, value) {
+    return '<div class="stat"><small>' + label + '</small><strong>' + value + '</strong></div>';
+  }
+
+  /* ---------- Lista ---------- */
+  function matches(g) {
+    if (filter === 'all') return true;
+    if (filter === 'P') return !g.result;
+    return g.result === filter;
+  }
+
+  function renderChips() {
+    var count = function (f) {
+      return games.filter(function (g) { return f === 'all' ? true : f === 'P' ? !g.result : g.result === f; }).length;
+    };
+    var defs = [['all', 'Todos'], ['V', 'Vitórias'], ['E', 'Empates'], ['D', 'Derrotas'], ['P', 'Pendentes']];
+    $('#chips').innerHTML = defs.map(function (d) {
+      return '<button class="chip" data-f="' + d[0] + '" aria-pressed="' + (filter === d[0]) + '">' + d[1] + '<b>' + count(d[0]) + '</b></button>';
+    }).join('');
+  }
+
+  function renderList() {
+    var list = games.filter(matches).sort(function (a, b) { return sortKey(b) < sortKey(a) ? -1 : 1; });
+    $('#empty').hidden = games.length > 0;
+    $('#chips').hidden = games.length === 0;
+    $('#list').innerHTML = list.map(card).join('');
+    if (games.length && !list.length) {
+      $('#list').innerHTML = '<p class="hint" style="text-align:center;padding:30px 0">Nenhum jogo neste filtro.</p>';
+    }
+  }
+
+  function card(g) {
+    var d = g.date ? parseISO(g.date) : null;
+    var cls = g.result ? g.result.toLowerCase() : '';
+    var sub = [g.time, g.fieldType].filter(Boolean).join(' · ');
+    var tags = '';
+    if (g.opponentKeeper) tags += '<span class="tag">vs ' + esc(g.opponentKeeper) + '</span>';
+    if (isNum(g.saves)) tags += '<span class="tag save">' + g.saves + ' defesa' + (g.saves === 1 ? '' : 's') + '</span>';
+    if (isNum(g.goalsConceded)) tags += '<span class="tag conc">' + g.goalsConceded + ' sofrido' + (g.goalsConceded === 1 ? '' : 's') + '</span>';
+    if (isNum(g.goalsScored) && g.goalsScored > 0) tags += '<span class="tag">' + g.goalsScored + ' gol' + (g.goalsScored === 1 ? '' : 's') + '</span>';
+
+    var main;
+    if (isNum(g.scoreFor) && isNum(g.scoreAgainst)) main = '<span class="score-pill">' + g.scoreFor + '×' + g.scoreAgainst + '</span>';
+    else if (g.result) main = '<span class="score-pill">' + g.result + '</span>';
+    else main = '<span class="pending">Completar</span>';
+    var rating = isNum(g.rating) ? '<span class="rating-pill">' + g.rating + '/30</span>' : '';
+
+    return '<div class="card ' + cls + '" role="button" tabindex="0" data-id="' + esc(g.id) + '">' +
+      '<div class="date"><b>' + (d ? d.getDate() : '–') + '</b><small>' + (d ? WEEKDAYS[d.getDay()] + ' ' + MONTHS[d.getMonth()] : '') + '</small></div>' +
+      '<div class="info"><h3>' + esc(g.venue || 'Quadra não informada') + '</h3>' + (sub ? '<p>' + esc(sub) + '</p>' : '') +
+      (tags ? '<div class="meta">' + tags + '</div>' : '') + '</div>' +
+      '<div class="side">' + main + rating + '</div></div>';
+  }
+
+  function render() { renderStats(); renderChips(); renderList(); }
+
+  /* ---------- Formulário ---------- */
+  var sheet = $('#sheet');
+
+  function setResult(v) {
+    draft.result = v || null;
+    document.querySelectorAll('#fResult button').forEach(function (b) {
+      b.setAttribute('aria-checked', String(b.dataset.v === draft.result));
+    });
+  }
+  function setStepper(key, v) {
+    draft[key] = v;
+    document.querySelector('.stepper[data-key="' + key + '"] output').textContent = v == null ? '–' : v;
+  }
+
+  function openForm(id) {
+    editingId = id || null;
+    var g = id ? games.filter(function (x) { return x.id === id; })[0] : null;
+    g = g || {};
+    $('#sheetTitle').textContent = id ? 'Editar jogo' : 'Novo jogo';
+    $('#btnDelete').hidden = !id;
+    $('#fDate').value = g.date || '';
+    $('#fTime').value = g.time || '';
+    $('#fVenue').value = g.venue || '';
+    $('#fField').value = g.fieldType || '';
+    $('#fOpp').value = g.opponentKeeper || '';
+    $('#fScoreFor').value = isNum(g.scoreFor) ? g.scoreFor : '';
+    $('#fScoreAgainst').value = isNum(g.scoreAgainst) ? g.scoreAgainst : '';
+    $('#fRating').value = isNum(g.rating) ? g.rating : '';
+    $('#fNotes').value = g.notes || '';
+    draft = { concededAuto: !isNum(g.goalsConceded) };
+    setResult(g.result);
+    ['goalsScored', 'goalsConceded', 'saves'].forEach(function (k) { setStepper(k, isNum(g[k]) ? g[k] : null); });
+    document.body.style.overflow = 'hidden';
+    sheet.showModal();
+    sheet.scrollTop = 0;
+  }
+
+  function closeForm() { if (sheet.open) sheet.close(); }
+  sheet.addEventListener('close', function () { document.body.style.overflow = ''; });
+  sheet.addEventListener('click', function (e) { if (e.target === sheet) closeForm(); });
+
+  function onScoreInput() {
+    var a = toNum($('#fScoreFor').value), b = toNum($('#fScoreAgainst').value);
+    if (a != null && b != null) setResult(a > b ? 'V' : a < b ? 'D' : 'E');
+    if (b != null && draft.concededAuto) setStepper('goalsConceded', b);
+  }
+
+  function readForm() {
+    var rating = toNum($('#fRating').value);
+    if (rating != null) rating = Math.max(0, Math.min(30, Math.round(rating)));
+    return {
+      date: $('#fDate').value,
+      time: $('#fTime').value || null,
+      venue: $('#fVenue').value.trim() || null,
+      fieldType: $('#fField').value.trim() || null,
+      opponentKeeper: $('#fOpp').value.trim() || null,
+      scoreFor: toNum($('#fScoreFor').value),
+      scoreAgainst: toNum($('#fScoreAgainst').value),
+      result: draft.result || null,
+      goalsScored: draft.goalsScored,
+      goalsConceded: draft.goalsConceded,
+      saves: draft.saves,
+      rating: rating,
+      notes: $('#fNotes').value.trim() || null
+    };
+  }
+
+  $('#form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var data = readForm();
+    if (!data.date) { toast('Informe a data do jogo.'); return; }
+    if (editingId) {
+      games = games.map(function (g) { return g.id === editingId ? Object.assign({}, g, data) : g; });
+    } else {
+      data.id = uid();
+      games.push(data);
+    }
+    persist();
+    closeForm();
+    render();
+    toast(editingId ? 'Jogo atualizado.' : 'Jogo salvo.');
+  });
+
+  $('#btnDelete').addEventListener('click', function () {
+    if (!editingId || !confirm('Excluir este jogo?')) return;
+    games = games.filter(function (g) { return g.id !== editingId; });
+    persist(); closeForm(); render(); toast('Jogo excluído.');
+  });
+
+  $('#btnClose').addEventListener('click', closeForm);
+  $('#fScoreFor').addEventListener('input', onScoreInput);
+  $('#fScoreAgainst').addEventListener('input', onScoreInput);
+  $('#fResult').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    setResult(draft.result === b.dataset.v ? null : b.dataset.v);
+  });
+  document.querySelectorAll('.stepper').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var key = el.dataset.key, cur = draft[key], d = +b.dataset.d;
+      if (cur == null && d < 0) return;
+      if (key === 'goalsConceded') draft.concededAuto = false;
+      setStepper(key, Math.max(0, (cur == null ? 0 : cur) + d));
+    });
+  });
+  $('#fieldTypes').innerHTML = FIELD_TYPES.map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
+
+  /* ---------- Lista: cliques ---------- */
+  $('#list').addEventListener('click', function (e) {
+    var c = e.target.closest('.card'); if (c) openForm(c.dataset.id);
+  });
+  $('#list').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var c = e.target.closest('.card'); if (c) { e.preventDefault(); openForm(c.dataset.id); }
+  });
+  $('#chips').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return;
+    filter = b.dataset.f; renderChips(); renderList();
+  });
+  $('#fab').addEventListener('click', function () { openForm(); });
+
+  /* ---------- Leitura de prints (OCR no próprio aparelho) ---------- */
+  var worker = null, onProgress = function () {};
+
+  function loadTesseract() {
+    return new Promise(function (resolve, reject) {
+      if (window.Tesseract) return resolve();
+      var s = document.createElement('script');
+      s.src = TESSERACT_SRC;
+      s.onload = resolve;
+      s.onerror = function () { reject(new Error('offline')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function getWorker() {
+    if (worker) return worker;
+    await loadTesseract();
+    worker = await Tesseract.createWorker('por', 1, {
+      logger: function (m) { if (m.status === 'recognizing text') onProgress(m.progress); }
+    });
+    await worker.setParameters({ tessedit_pageseg_mode: '6' });
+    return worker;
+  }
+
+  async function closeWorker() {
+    if (!worker) return;
+    try { await worker.terminate(); } catch (e) { /* ignora */ }
+    worker = null;
+  }
+
+  // createImageBitmap é rígido com arquivos levemente corrompidos; o <img> aceita mais casos.
+  async function decodeImage(file) {
+    try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+    catch (e1) {
+      return new Promise(function (resolve, reject) {
+        var url = URL.createObjectURL(file), img = new Image();
+        img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('imagem')); };
+        img.src = url;
+      });
+    }
+  }
+
+  // Prints do app são escuros: converte para cinza e inverte, o que melhora muito a leitura.
+  async function prepareImage(file) {
+    var bmp = await decodeImage(file);
+    var bw = bmp.naturalWidth || bmp.width, bh = bmp.naturalHeight || bmp.height;
+    var scale = Math.max(1, Math.min(3, 2000 / bw));
+    var w = Math.round(bw * scale), h = Math.round(bh * scale);
+    var canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    var ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(bmp, 0, 0, w, h);
+    var img = ctx.getImageData(0, 0, w, h), d = img.data, sum = 0, i;
+    for (i = 0; i < d.length; i += 4) {
+      var l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      d[i] = d[i + 1] = d[i + 2] = l; sum += l;
+    }
+    if (sum / (d.length / 4) < 128) {
+      for (i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = 255 - d[i];
+    }
+    ctx.putImageData(img, 0, 0);
+    return canvas;
+  }
+
+  async function readPrint(file) {
+    var canvas = await prepareImage(file);
+    var w = await getWorker();
+    var res = await w.recognize(canvas);
+    return GDAParser.parsePrintText(res.data.text);
+  }
+
+  function ocrError(e) {
+    console.warn('Leitura do print falhou:', e && (e.message || e));
+    toast(e && e.message === 'offline'
+      ? 'Preciso de internet para carregar o leitor de prints (só na primeira vez).'
+      : 'Não consegui ler esse print.');
+  }
+
+  // Um print dentro do formulário
+  $('#btnScan').addEventListener('click', function () { $('#filePrint').click(); });
+  $('#filePrint').addEventListener('change', async function (e) {
+    var file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    busy('Lendo print…', 0);
+    onProgress = function (p) { busy('Lendo print…', p); };
+    try {
+      var r = await readPrint(file);
+      var found = [];
+      if (r.date) { $('#fDate').value = r.date; found.push('data'); }
+      if (r.time) { $('#fTime').value = r.time; found.push('horário'); }
+      if (r.venue) { $('#fVenue').value = r.venue; found.push('quadra'); }
+      if (r.fieldType) { $('#fField').value = r.fieldType; found.push('tipo de campo'); }
+      if (r.rating != null) { $('#fRating').value = r.rating; found.push('nota'); }
+      toast(found.length ? 'Li: ' + found.join(', ') + '. Confira os dados.' : 'Não achei dados nesse print. Preencha manualmente.');
+    } catch (err) { ocrError(err); }
+    finally { unbusy(); closeWorker(); }
+  });
+
+  // Vários prints de uma vez: cria os jogos como "pendentes" para completar depois
+  $('#btnImport').addEventListener('click', function () { $('#filePrints').click(); });
+  $('#filePrints').addEventListener('change', async function (e) {
+    var files = Array.prototype.slice.call(e.target.files); e.target.value = '';
+    if (!files.length) return;
+    var added = 0, dup = 0, failed = 0;
+    var keyOf = function (g) { return [g.date, g.time || '', (g.venue || '').toLowerCase()].join('|'); };
+    var seen = {}; games.forEach(function (g) { seen[keyOf(g)] = true; });
+    try {
+      for (var i = 0; i < files.length; i++) {
+        var label = 'Lendo print ' + (i + 1) + ' de ' + files.length + '…';
+        busy(label, i / files.length);
+        onProgress = function (p) { busy(label, (i + p) / files.length); };
+        var r;
+        try { r = await readPrint(files[i]); } catch (err) { if (err && err.message === 'offline') throw err; failed++; continue; }
+        if (!r.date) { failed++; continue; }
+        var g = { id: uid(), date: r.date, time: r.time, venue: r.venue, fieldType: r.fieldType, rating: r.rating,
+                  opponentKeeper: null, scoreFor: null, scoreAgainst: null, result: null,
+                  goalsScored: null, goalsConceded: null, saves: null, notes: null };
+        if (seen[keyOf(g)]) { dup++; continue; }
+        seen[keyOf(g)] = true; games.push(g); added++;
+      }
+      persist(); render();
+      var parts = [added + (added === 1 ? ' jogo adicionado' : ' jogos adicionados')];
+      if (dup) parts.push(dup + ' já existia' + (dup === 1 ? '' : 'm'));
+      if (failed) parts.push(failed + ' não deu para ler');
+      toast(parts.join(' · ') + (added ? '. Toque para completar.' : '.'));
+      if (added) { filter = 'P'; render(); }
+    } catch (err) { persist(); render(); ocrError(err); }
+    finally { unbusy(); closeWorker(); }
+  });
+
+  /* ---------- Menu: backup e exportação ---------- */
+  var menu = $('#menu');
+  $('#btnMenu').addEventListener('click', function () { menu.showModal(); });
+  $('#btnMenuClose').addEventListener('click', function () { menu.close(); });
+  menu.addEventListener('click', function (e) { if (e.target === menu) menu.close(); });
+
+  function download(name, text, type) {
+    var url = URL.createObjectURL(new Blob([text], { type: type }));
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+  function stamp() { return new Date().toISOString().slice(0, 10); }
+
+  $('#mExportJson').addEventListener('click', function () {
+    download('diario-do-goleiro-' + stamp() + '.json', JSON.stringify(games, null, 2), 'application/json');
+    menu.close(); toast('Backup exportado.');
+  });
+  $('#mExportCsv').addEventListener('click', function () {
+    var head = ['Data', 'Horário', 'Quadra', 'Tipo de campo', 'Goleiro adversário', 'Placar', 'Resultado', 'Gols marcados', 'Gols sofridos', 'Defesas', 'Nota do jogo', 'Observações'];
+    var q = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+    var rows = games.slice().sort(function (a, b) { return sortKey(a) < sortKey(b) ? -1 : 1; }).map(function (g) {
+      var d = g.date ? g.date.split('-').reverse().join('/') : '';
+      var score = isNum(g.scoreFor) && isNum(g.scoreAgainst) ? g.scoreFor + 'x' + g.scoreAgainst : '';
+      return [d, g.time, g.venue, g.fieldType, g.opponentKeeper, score, g.result ? RESULT_LABEL[g.result] : '',
+              g.goalsScored, g.goalsConceded, g.saves, g.rating, g.notes].map(q).join(';');
+    });
+    download('diario-do-goleiro-' + stamp() + '.csv', '﻿' + [head.map(q).join(';')].concat(rows).join('\r\n'), 'text/csv');
+    menu.close(); toast('Planilha exportada.');
+  });
+  $('#mImportJson').addEventListener('click', function () { $('#fileBackup').click(); });
+  $('#fileBackup').addEventListener('change', async function (e) {
+    var file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    try {
+      var list = JSON.parse(await file.text());
+      if (!Array.isArray(list)) throw new Error('formato');
+      list = list.filter(function (g) { return g && typeof g.date === 'string'; });
+      if (!list.length) throw new Error('vazio');
+      if (!confirm('Importar ' + list.length + ' jogo(s)? Jogos com o mesmo código serão substituídos.')) return;
+      var byId = {}; games.forEach(function (g) { byId[g.id] = g; });
+      list.forEach(function (g) { g.id = g.id || uid(); byId[g.id] = g; });
+      games = Object.keys(byId).map(function (k) { return byId[k]; });
+      persist(); menu.close(); render(); toast(list.length + ' jogo(s) importado(s).');
+    } catch (err) { toast('Esse arquivo não parece um backup válido.'); }
+  });
+
+  /* ---------- Início ---------- */
+  render();
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+})();

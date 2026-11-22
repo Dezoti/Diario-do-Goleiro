@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1115">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Goleiro">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Diário do Goleiro</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Diário do</p>
+      <h1>Goleiro</h1>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btnImport" aria-label="Importar prints" title="Importar vários prints">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h2l1.2-1.6A1 1 0 0 1 10 3h4a1 1 0 0 1 .8.4L16 5h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+      </button>
+      <button class="icon-btn" id="btnMenu" aria-label="Mais opções">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stats" id="stats" aria-label="Resumo"></section>
+    <nav class="chips" id="chips" aria-label="Filtro"></nav>
+    <section class="list" id="list" aria-live="polite"></section>
+    <section class="empty" id="empty" hidden>
+      <div class="empty-icon" aria-hidden="true">🧤</div>
+      <h2>Nenhum jogo por aqui</h2>
+      <p>Toque em <strong>Novo jogo</strong> e suba o print da convocação: a data, o horário, a quadra e a nota entram sozinhos.</p>
+    </section>
+  </main>
+
+  <button class="fab" id="fab"><span aria-hidden="true">+</span> Novo jogo</button>
+
+  <!-- Formulário -->
+  <dialog id="sheet" class="sheet">
+    <form id="form" method="dialog" autocomplete="off">
+      <div class="sheet-head">
+        <h2 id="sheetTitle">Novo jogo</h2>
+        <button type="button" class="icon-btn" id="btnClose" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <button type="button" class="scan" id="btnScan">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/></svg>
+        <span id="scanLabel">Ler print do jogo</span>
+      </button>
+
+      <div class="grid2">
+        <label class="field"><span>Data</span><input type="date" id="fDate" required></label>
+        <label class="field"><span>Horário</span><input type="time" id="fTime"></label>
+      </div>
+      <label class="field"><span>Quadra</span><input type="text" id="fVenue" placeholder="Nome da quadra" enterkeyhint="next"></label>
+      <label class="field"><span>Tipo de campo</span>
+        <input type="text" id="fField" list="fieldTypes" placeholder="Society Fut5/Fut7">
+        <datalist id="fieldTypes"></datalist>
+      </label>
+      <label class="field"><span>Goleiro adversário</span><input type="text" id="fOpp" placeholder="Nome do goleiro" enterkeyhint="next"></label>
+
+      <div class="field">
+        <span>Placar</span>
+        <div class="score">
+          <label><small>Meu time</small><input type="number" inputmode="numeric" min="0" id="fScoreFor" placeholder="0"></label>
+          <b aria-hidden="true">×</b>
+          <label><small>Adversário</small><input type="number" inputmode="numeric" min="0" id="fScoreAgainst" placeholder="0"></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <span>Resultado</span>
+        <div class="seg" id="fResult" role="radiogroup" aria-label="Resultado">
+          <button type="button" role="radio" data-v="V" class="seg-v">Vitória</button>
+          <button type="button" role="radio" data-v="E" class="seg-e">Empate</button>
+          <button type="button" role="radio" data-v="D" class="seg-d">Derrota</button>
+        </div>
+      </div>
+
+      <div class="steppers">
+        <div class="stepper" data-key="goalsScored"><span>Gols marcados</span><div><button type="button" data-d="-1" aria-label="Menos">−</button><output>–</output><button type="button" data-d="1" aria-label="Mais">+</button></div></div>
+        <div class="stepper" data-key="goalsConceded"><span>Gols sofridos</span><div><button type="button" data-d="-1" aria-label="Menos">−</button><output>–</output><button type="button" data-d="1" aria-label="Mais">+</button></div></div>
+        <div class="stepper" data-key="saves"><span>Defesas</span><div><button type="button" data-d="-1" aria-label="Menos">−</button><output>–</output><button type="button" data-d="1" aria-label="Mais">+</button></div></div>
+      </div>
+
+      <label class="field"><span>Nota do jogo</span>
+        <div class="rating"><input type="number" inputmode="numeric" min="0" max="30" id="fRating" placeholder="30"><em>/ 30</em></div>
+      </label>
+
+      <label class="field"><span>Observações</span><textarea id="fNotes" rows="3" placeholder="Como foi o jogo?"></textarea></label>
+
+      <div class="actions">
+        <button type="button" class="btn danger" id="btnDelete" hidden>Excluir</button>
+        <button type="submit" class="btn primary" id="btnSave">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Menu -->
+  <dialog id="menu" class="sheet menu">
+    <div class="sheet-head"><h2>Dados</h2>
+      <button type="button" class="icon-btn" id="btnMenuClose" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="hint">Os jogos ficam salvos neste aparelho. Faça um backup de vez em quando.</p>
+    <button class="menu-item" id="mExportJson">Exportar backup (JSON)</button>
+    <button class="menu-item" id="mImportJson">Importar backup (JSON)</button>
+    <button class="menu-item" id="mExportCsv">Exportar planilha (CSV)</button>
+  </dialog>
+
+  <div class="busy" id="busy" hidden><div class="busy-card"><div class="spinner" aria-hidden="true"></div><p id="busyText">Lendo print…</p><div class="bar"><i id="busyBar"></i></div></div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <input type="file" id="filePrint" accept="image/*" hidden>
+  <input type="file" id="filePrints" accept="image/*" multiple hidden>
+  <input type="file" id="fileBackup" accept="application/json,.json" hidden>
+
+  <script src="parser.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+*.log
+# backups pessoais exportados pelo app
+diario-do-goleiro-*.json
+diario-do-goleiro-*.csv
