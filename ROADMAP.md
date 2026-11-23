@@ -1,6 +1,6 @@
 # Roadmap
 
-Backlog do Diário do Goleiro. Cada item tem uma regra clara do que significa "pronto". Ordem sugerida: 1 → 2 → 3 → 4 (a marca pode andar em paralelo).
+Backlog do Diário do Goleiro. Cada item tem uma regra clara do que significa "pronto". Itens 1 a 4 estão prontos. Ordem sugerida para os novos: 7 → 5 → 6.
 
 Legenda de tamanho: **P** (uma sessão), **M** (algumas sessões), **G** (várias etapas).
 
@@ -13,6 +13,9 @@ Legenda de tamanho: **P** (uma sessão), **M** (algumas sessões), **G** (vária
 - [x] Instalação como app (PWA) com guia dentro do app e botão de compartilhar
 - [x] Hospedagem no GitHub Pages
 - [x] Barrar jogo já cadastrado (mesma data e horário)
+- [x] Fotos no jogo (várias por jogo, backup opcional com fotos)
+- [x] Imagem para Instagram (story e feed)
+- [x] Logotipo e ícones do app
 
 ## 1. Barrar jogo já cadastrado — P (feito)
 
@@ -70,6 +73,48 @@ Pronto quando:
 - [x] Ícone do app (192, 512 e maskable) atualizado a partir do logotipo em PNG. (Versão SVG e de uma cor não foram feitas: o PNG com fundo transparente atende às imagens.)
 - [x] Paleta e tipografia registradas em `docs/marca.md`.
 
+## 5. Estatísticas e evolução — M
+
+Pronto quando:
+- [ ] Há uma tela de **Estatísticas**, aberta por um botão no topo.
+- [ ] Mostra os totais: jogos, vitórias, empates e derrotas, % de vitórias, média de defesas por jogo, média de gols sofridos por jogo e média da nota (de 30).
+- [ ] Mostra a **evolução da nota** ao longo do tempo, em gráfico simples.
+- [ ] Mostra o **desempenho por quadra**: jogos, vitórias e média da nota, das mais jogadas para as menos.
+- [ ] Dá para escolher o período: este mês, este ano ou tudo.
+- [ ] Com poucos jogos (menos de 3), mostra um aviso em vez de gráficos vazios.
+- [ ] Os cálculos ficam em funções puras, com testes em `test/`.
+
+Decisões técnicas:
+- Gráficos desenhados em SVG, sem biblioteca externa.
+- Médias consideram só os jogos que têm aquele dado preenchido (jogo sem nota não puxa a média para zero).
+
+Para confirmar na hora de fazer: quais números são os mais importantes para você; se faltar algum, entra na lista.
+
+## 6. Resumo do mês ou ano — M
+
+Depende dos itens 3 (imagem) e 5 (estatísticas).
+
+Pronto quando:
+- [ ] Na tela de Estatísticas há o botão **Gerar resumo** para o período escolhido (mês ou ano).
+- [ ] A imagem sai em story (1080 × 1920) e em feed (1080 × 1350), com o mesmo estilo e os mesmos logotipos das imagens de jogo.
+- [ ] Mostra o nome do período, o número de jogos, vitórias, empates e derrotas, e o total de defesas.
+- [ ] Há pré-visualização, compartilhar e baixar, como na imagem de jogo.
+- [ ] Reaproveita o desenho de `share-image.js` (sem copiar código).
+
+Para confirmar na hora de fazer: se a nota média e os gols sofridos também entram, e se o resumo pode levar uma foto de fundo.
+
+## 7. Autocompletar quadra — P
+
+Pronto quando:
+- [ ] Ao digitar a quadra no formulário, o app sugere as quadras já usadas (as mais frequentes primeiro).
+- [ ] Ao escolher uma sugestão, o tipo de campo é preenchido com o da última vez naquela quadra, se estiver vazio.
+- [ ] Nomes que mudam só em maiúsculas, acentos ou espaços sobrando contam como a mesma quadra (ex.: "Arena P10" e "ARENA P10 ").
+- [ ] A leitura de prints usa o nome já existente quando for igual a uma quadra salva.
+- [ ] A regra de comparação fica em função pura, com testes em `test/`.
+
+Decisão técnica: lista de sugestões nativa do navegador (`<datalist>`), sem biblioteca.
+
 ## Ideias para depois
 
 - Conta e sincronização na nuvem (adiada: exigiria servidor e banco, e traz responsabilidades de privacidade).
+- Jogo agendado: cadastrar o jogo antes de acontecer e preencher o resultado depois.
