@@ -49,4 +49,5 @@ Escolhida a direção **luva + caderno**, no estilo do logotipo ilustrado do pr�
 
 - Fundo do app e dos ícones: `#0f1115`. Destaque verde: `#22d35a`. Texto: `#f2f4f7`.
 - Resultado nas imagens do Instagram: vitória `#3ddc84`, empate `#ffc233`, derrota `#ff5d5d`.
-- Imagens do Instagram: fonte **Oswald** (700 e 500), licença livre (OFL), guardada em `assets/fonts/`.
+- Imagens do Instagram: fonte **Oswald** (700 e 500, licença OFL) para placar e quadra, e **Permanent Marker** (licença Apache 2.0) só para a palavra do resultado. Ficam em `assets/fonts/`.
+- Layout das imagens: placar no topo à esquerda, levemente inclinado; logotipos empilhados no canto inferior esquerdo. No story há 250 px de margem em cima e embaixo.

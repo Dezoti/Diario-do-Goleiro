@@ -7,13 +7,14 @@
   'use strict';
 
   var FORMATS = {
-    story: { w: 1080, h: 1920, label: 'Story', safeTop: 290, safeBottom: 380 }, // faixas cobertas pela interface do Instagram
-    feed: { w: 1080, h: 1350, label: 'Feed', safeTop: 60, safeBottom: 80 }
+    story: { w: 1080, h: 1920, label: 'Story', safeTop: 250, safeBottom: 250, pad: 0 }, // margem de 250 px em cima e embaixo (interface do Instagram)
+    feed: { w: 1080, h: 1350, label: 'Feed', safeTop: 60, safeBottom: 80, pad: 30 }
   };
   var MAX_PHOTOS = 4;
   var COLORS = { V: '#3ddc84', E: '#ffc233', D: '#ff5d5d' };
   var LABELS = { V: 'VITÓRIA', E: 'EMPATE', D: 'DERROTA' };
   var FONT = '"GDOswald", "Arial Narrow", Impact, sans-serif';
+  var MARKER = '"GDMarker", "Marker Felt", "Comic Sans MS", cursive';
 
   function isNum(n) { return typeof n === 'number' && isFinite(n); }
 
@@ -67,7 +68,8 @@
     if (fontReady) return fontReady;
     fontReady = Promise.all([
       new FontFace('GDOswald', 'url(assets/fonts/oswald-700.woff2)', { weight: '700' }).load(),
-      new FontFace('GDOswald', 'url(assets/fonts/oswald-500.woff2)', { weight: '500' }).load()
+      new FontFace('GDOswald', 'url(assets/fonts/oswald-500.woff2)', { weight: '500' }).load(),
+      new FontFace('GDMarker', 'url(assets/fonts/permanent-marker.woff2)', { weight: '400' }).load()
     ]).then(function (fs) { fs.forEach(function (f) { document.fonts.add(f); }); }).catch(function () {});
     return fontReady;
   }
@@ -145,31 +147,38 @@
       ctx.drawImage(b, r.sx, r.sy, r.sw, r.sh, r.dx, r.dy, r.dw, r.dh);
     });
   }
-  function drawShade(ctx, W, H, fmt) {
-    var top = ctx.createLinearGradient(0, 0, 0, fmt.safeTop + 260);
-    top.addColorStop(0, 'rgba(0,0,0,.72)'); top.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = top; ctx.fillRect(0, 0, W, fmt.safeTop + 260);
-    var from = H * 0.38, bot = ctx.createLinearGradient(0, from, 0, H);
-    bot.addColorStop(0, 'rgba(0,0,0,0)'); bot.addColorStop(0.62, 'rgba(0,0,0,.78)'); bot.addColorStop(1, 'rgba(0,0,0,.92)');
+  // Sombras só onde há texto ou logo: topo (placar) e canto inferior esquerdo (logotipos).
+  function drawShade(ctx, W, H, topEnd, logoTop) {
+    var top = ctx.createLinearGradient(0, 0, 0, topEnd);
+    top.addColorStop(0, 'rgba(0,0,0,.6)'); top.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = top; ctx.fillRect(0, 0, W, topEnd);
+    var from = logoTop - 140, bot = ctx.createLinearGradient(0, from, 0, H);
+    bot.addColorStop(0, 'rgba(0,0,0,0)'); bot.addColorStop(1, 'rgba(0,0,0,.7)');
     ctx.fillStyle = bot; ctx.fillRect(0, from, W, H - from);
   }
-  function drawLogo(ctx, logo, fallbackText, cx, cy, maxW, maxH) {
+
+  // Desenha o logo encostado na esquerda (x) com a base em yBottom. Devolve a altura usada.
+  function drawLogoLeft(ctx, logo, fallbackText, x, yBottom, maxW, maxH) {
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 18;
+    ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 16;
+    var used;
     if (logo) {
       var r = logo.box, b = fitBox(r.w, r.h, maxW, maxH);
-      ctx.drawImage(logo.img, r.x, r.y, r.w, r.h, cx - b.w / 2, cy - b.h / 2, b.w, b.h);
+      ctx.drawImage(logo.img, r.x, r.y, r.w, r.h, x, yBottom - b.h, b.w, b.h);
+      used = b.h;
     } else {
-      var size = shrinkFont(ctx, fallbackText, 700, 44, maxW);
-      ctx.font = '700 ' + size + 'px ' + FONT; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(fallbackText, cx, cy);
+      var size = shrinkFont(ctx, fallbackText, 700, 40, maxW);
+      ctx.font = '700 ' + size + 'px ' + FONT; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText(fallbackText, x, yBottom - 8);
+      used = size + 8;
     }
     ctx.restore();
+    return used;
   }
 
   // game: jogo salvo. opts: { format: 'story'|'feed', bitmaps: [ImageBitmap|HTMLImageElement] }
   async function render(game, opts) {
-    var fmt = FORMATS[opts.format] || FORMATS.story, W = fmt.w, H = fmt.h;
+    var fmt = FORMATS[opts.format] || FORMATS.story, W = fmt.w, H = fmt.h, M = 72; // M: margem esquerda
     var bitmaps = (opts.bitmaps || []).slice(0, MAX_PHOTOS);
     var res = await Promise.all([loadFont(), loadLogo('goleiro-de-aluguel'), loadLogo('diario-do-goleiro')]);
     var logoA = res[1], logoB = res[2];
@@ -177,41 +186,41 @@
     var c = document.createElement('canvas'); c.width = W; c.height = H;
     var ctx = c.getContext('2d');
     if (bitmaps.length) drawPhotos(ctx, W, H, bitmaps); else drawBackground(ctx, W, H);
-    drawShade(ctx, W, H, fmt);
 
-    // Logotipos no topo, dentro da área livre do Instagram.
-    var logoY = fmt.safeTop + 115;
-    drawLogo(ctx, logoA, 'GOLEIRO DE ALUGUEL', W * 0.27, logoY, 380, 190);
-    drawLogo(ctx, logoB, 'DIÁRIO DO GOLEIRO', W * 0.73, logoY, 380, 190);
+    // Logotipos empilhados no canto inferior esquerdo, acima da faixa do rodapé.
+    // O primeiro desenhado é o de baixo; assim a conta começa pela base.
+    var base = H - fmt.safeBottom, gap = 26, LW = 380, LH = 170;
+    var hB = (logoB ? fitBox(logoB.box.w, logoB.box.h, LW, LH).h : 48);
+    var hA = (logoA ? fitBox(logoA.box.w, logoA.box.h, LW, LH).h : 48);
+    var logosTop = base - hB - gap - hA;
+    drawShade(ctx, W, H, fmt.safeTop + 330, logosTop);
+    drawLogoLeft(ctx, logoA, 'GOLEIRO DE ALUGUEL', M, logosTop + hA, LW, LH);
+    drawLogoLeft(ctx, logoB, 'DIÁRIO DO GOLEIRO', M, base, LW, LH);
 
-    // Bloco inferior: resultado, placar e quadra, terminando acima da faixa do rodapé.
-    var res2 = resultFromScore(game), bottom = H - fmt.safeBottom;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 24;
-
-    var venue = (game.venue || '').toUpperCase();
-    var y = bottom;
-    if (venue) {
-      ctx.font = '500 56px ' + FONT;
-      var lines = wrapLines(ctx, venue, W - 160, 2);
-      ctx.fillStyle = 'rgba(255,255,255,.92)';
-      for (var i = lines.length - 1; i >= 0; i--) { ctx.fillText(lines[i], W / 2, y); y -= 70; }
-      y -= 24;
-    }
+    // Placar no topo, alinhado à esquerda e levemente inclinado, como um adesivo.
+    var r2 = resultFromScore(game);
     var score = (isNum(game.scoreFor) && isNum(game.scoreAgainst)) ? game.scoreFor + ' × ' + game.scoreAgainst : '';
+    ctx.save();
+    ctx.translate(M, fmt.safeTop + fmt.pad); ctx.rotate(-0.045);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 18;
+    var y = 0;
+    if (r2) {
+      ctx.font = '400 62px ' + MARKER; ctx.fillStyle = r2.color;
+      ctx.fillText(r2.label.charAt(0) + r2.label.slice(1).toLowerCase() + '!', 0, y + 56); y += 84;
+    }
     if (score) {
-      var ss = shrinkFont(ctx, score, 700, 330, W - 120);
+      var ss = shrinkFont(ctx, score, 700, 170, W - 2 * M);
       ctx.font = '700 ' + ss + 'px ' + FONT; ctx.fillStyle = '#fff';
-      ctx.fillText(score, W / 2, y); y -= ss * 0.86 + 30;
+      ctx.fillText(score, -4, y + ss * 0.84); y += ss * 0.84 + 30;
     }
-    if (res2) {
-      var ls = 96;
-      ctx.font = '700 ' + ls + 'px ' + FONT; ctx.fillStyle = res2.color;
-      if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '12px';
-      ctx.fillText(res2.label, W / 2, y);
-      if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
+    var venue = (game.venue || '').trim();
+    if (venue) {
+      ctx.font = '500 52px ' + FONT; ctx.fillStyle = 'rgba(255,255,255,.95)';
+      var lines = wrapLines(ctx, venue, W - 2 * M - 40, 2);
+      lines.forEach(function (ln, i) { ctx.fillText(ln, 0, y + 50 + i * 62); });
     }
-    ctx.shadowBlur = 0;
+    ctx.restore();
     return c;
   }
 
