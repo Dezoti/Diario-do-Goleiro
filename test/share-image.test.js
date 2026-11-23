@@ -48,3 +48,32 @@ test('fitBox mantém a proporção dentro do limite', () => {
 test('nome do arquivo', () => {
   assert.strictEqual(S.fileName({ date: '2026-11-22' }, 'story'), 'jogo-2026-11-22-story.png');
 });
+
+/* ---------- Resumo do período ---------- */
+test('título do período: mês com ano embaixo, ou só o ano', () => {
+  assert.deepStrictEqual(S.periodTitle('month', '2026-11-23'), { main: 'Novembro', sub: '2026' });
+  assert.deepStrictEqual(S.periodTitle('month', '2026-03-01'), { main: 'Março', sub: '2026' });
+  assert.deepStrictEqual(S.periodTitle('year', '2026-11-23'), { main: '2026', sub: null });
+});
+
+test('nome do arquivo do resumo', () => {
+  assert.strictEqual(S.summaryFileName('month', '2026-11-23', 'story'), 'resumo-2026-11-story.png');
+  assert.strictEqual(S.summaryFileName('year', '2026-11-23', 'feed'), 'resumo-2026-feed.png');
+});
+
+test('linhas do resumo: só jogos, vitórias, empates, derrotas e defesas', () => {
+  const rows = S.summaryRows({ total: 12, wins: 8, draws: 1, losses: 3, totalSaves: 96 });
+  assert.deepStrictEqual(rows.map(r => r.label), ['jogos', 'vitórias', 'empate', 'derrotas', 'defesas']);
+  assert.deepStrictEqual(rows.map(r => r.value), [12, 8, 1, 3, 96]);
+});
+
+test('singular e plural no resumo', () => {
+  const rows = S.summaryRows({ total: 1, wins: 1, draws: 0, losses: 0, totalSaves: 1 });
+  assert.deepStrictEqual(rows.map(r => r.label), ['jogo', 'vitória', 'empates', 'derrotas', 'defesa']);
+});
+
+test('sem defesas anotadas, a linha de defesas some', () => {
+  const rows = S.summaryRows({ total: 3, wins: 1, draws: 1, losses: 1, totalSaves: 0 });
+  assert.strictEqual(rows.length, 4);
+  assert.ok(!rows.some(r => /defesa/.test(r.label)));
+});

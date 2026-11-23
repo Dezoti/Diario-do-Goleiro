@@ -1,6 +1,6 @@
 # Roadmap
 
-Backlog do Diário do Goleiro. Cada item tem uma regra clara do que significa "pronto". Itens 1 a 5 e 7 estão prontos. O próximo é o 6.
+Backlog do Diário do Goleiro. Cada item tem uma regra clara do que significa "pronto". Todos os itens (1 a 7) estão prontos.
 
 Legenda de tamanho: **P** (uma sessão), **M** (algumas sessões), **G** (várias etapas).
 
@@ -18,6 +18,7 @@ Legenda de tamanho: **P** (uma sessão), **M** (algumas sessões), **G** (vária
 - [x] Logotipo e ícones do app
 - [x] Autocompletar quadra
 - [x] Estatísticas e evolução
+- [x] Resumo do mês ou ano em imagem
 
 ## 1. Barrar jogo já cadastrado — P (feito)
 
@@ -92,18 +93,18 @@ Decisões técnicas:
 
 Para confirmar na hora de fazer: quais números são os mais importantes para você; se faltar algum, entra na lista.
 
-## 6. Resumo do mês ou ano — M
+## 6. Resumo do mês ou ano — M ✅ feito
 
 Depende dos itens 3 (imagem) e 5 (estatísticas).
 
 Pronto quando:
-- [ ] Na tela de Estatísticas há o botão **Gerar resumo** para o período escolhido (mês ou ano).
-- [ ] A imagem sai em story (1080 × 1920) e em feed (1080 × 1350), com o mesmo estilo e os mesmos logotipos das imagens de jogo.
-- [ ] Mostra o nome do período, o número de jogos, vitórias, empates e derrotas, e o total de defesas.
-- [ ] Há pré-visualização, compartilhar e baixar, como na imagem de jogo.
-- [ ] Reaproveita o desenho de `share-image.js` (sem copiar código).
+- [x] Na tela de Estatísticas há o botão **Gerar resumo** para o período escolhido (mês ou ano).
+- [x] A imagem sai em story (1080 × 1920) e em feed (1080 × 1350), com o mesmo estilo e os mesmos logotipos das imagens de jogo.
+- [x] Mostra o nome do período, o número de jogos, vitórias, empates e derrotas, e o total de defesas.
+- [x] Há pré-visualização, compartilhar e baixar, como na imagem de jogo.
+- [x] Reaproveita o desenho de `share-image.js` (sem copiar código).
 
-Para confirmar na hora de fazer: se a nota média e os gols sofridos também entram, e se o resumo pode levar uma foto de fundo.
+**Decidido:** entram só jogos, vitórias, empates, derrotas e defesas (a linha de defesas some se nenhum jogo do período tiver o dado). O resumo pode levar uma foto de fundo, escolhida entre as fotos dos jogos do período (opcional, no máximo uma).
 
 ## 7. Autocompletar quadra — P ✅ feito
 

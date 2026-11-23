@@ -30,6 +30,7 @@ test('resumo: totais, percentual e médias só de quem tem o dado', () => {
   assert.strictEqual(r.total, 4);
   assert.deepStrictEqual([r.wins, r.draws, r.losses, r.decided], [1, 1, 1, 3]);
   assert.ok(Math.abs(r.winRate - 1 / 3) < 1e-9);
+  assert.strictEqual(r.totalSaves, 20);
   assert.deepStrictEqual(r.avgSaves, { value: 10, n: 2 });            // (8+12)/2, jogos sem defesas não puxam para zero
   assert.deepStrictEqual(r.avgConceded, { value: 2.5, n: 2 });
   assert.deepStrictEqual(r.avgScored, { value: 0, n: 1 });             // zero informado conta

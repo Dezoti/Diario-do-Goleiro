@@ -54,8 +54,37 @@
     return 'jogo-' + (g && g.date ? g.date : 'sem-data') + '-' + format + '.png';
   }
 
+  /* ---------- Resumo do período ---------- */
+  var MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+  // mode: 'month' | 'year'; today: 'AAAA-MM-DD'. Devolve o título grande e, no mês, o ano em letra menor.
+  function periodTitle(mode, today) {
+    var p = String(today).split('-');
+    if (mode === 'month') return { main: MONTHS[(+p[1] || 1) - 1], sub: p[0] };
+    return { main: p[0], sub: null };
+  }
+  function periodSlug(mode, today) {
+    var p = String(today).split('-');
+    return mode === 'month' ? p[0] + '-' + p[1] : p[0];
+  }
+  function summaryFileName(mode, today, format) { return 'resumo-' + periodSlug(mode, today) + '-' + format + '.png'; }
+
+  function plural(n, one, many) { return n === 1 ? one : many; }
+  // Linhas do resumo: só jogos, vitórias, empates, derrotas e defesas. Defesas somem se nenhum jogo tiver o dado.
+  function summaryRows(s) {
+    var rows = [
+      { value: s.total, label: plural(s.total, 'jogo', 'jogos'), color: null },
+      { value: s.wins, label: plural(s.wins, 'vitória', 'vitórias'), color: COLORS.V },
+      { value: s.draws, label: plural(s.draws, 'empate', 'empates'), color: COLORS.E },
+      { value: s.losses, label: plural(s.losses, 'derrota', 'derrotas'), color: COLORS.D }
+    ];
+    if (s.totalSaves > 0) rows.push({ value: s.totalSaves, label: plural(s.totalSaves, 'defesa', 'defesas'), color: null });
+    return rows;
+  }
+
   var api = { FORMATS: FORMATS, MAX_PHOTOS: MAX_PHOTOS, resultFromScore: resultFromScore, coverRect: coverRect,
-              photoSlots: photoSlots, fitBox: fitBox, fileName: fileName };
+              photoSlots: photoSlots, fitBox: fitBox, fileName: fileName,
+              periodTitle: periodTitle, periodSlug: periodSlug, summaryFileName: summaryFileName, summaryRows: summaryRows };
   if (typeof document === 'undefined') {
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     root.GDAShareImage = api;
@@ -176,26 +205,39 @@
     return used;
   }
 
-  // game: jogo salvo. opts: { format: 'story'|'feed', bitmaps: [ImageBitmap|HTMLImageElement] }
-  async function render(game, opts) {
-    var fmt = FORMATS[opts.format] || FORMATS.story, W = fmt.w, H = fmt.h, M = 72; // M: margem esquerda
+  // Parte comum: fundo (foto ou cor da marca) e logotipos no canto inferior esquerdo.
+  async function setup(opts) {
+    var fmt = FORMATS[opts.format] || FORMATS.story, W = fmt.w, H = fmt.h;
     var bitmaps = (opts.bitmaps || []).slice(0, MAX_PHOTOS);
     var res = await Promise.all([loadFont(), loadLogo('goleiro-de-aluguel'), loadLogo('diario-do-goleiro')]);
-    var logoA = res[1], logoB = res[2];
-
     var c = document.createElement('canvas'); c.width = W; c.height = H;
     var ctx = c.getContext('2d');
     if (bitmaps.length) drawPhotos(ctx, W, H, bitmaps); else drawBackground(ctx, W, H);
-
-    // Logotipos empilhados no canto inferior esquerdo, acima da faixa do rodapé.
-    // O primeiro desenhado é o de baixo; assim a conta começa pela base.
-    var base = H - fmt.safeBottom, gap = 26, LW = 380, LH = 170;
-    var hB = (logoB ? fitBox(logoB.box.w, logoB.box.h, LW, LH).h : 48);
-    var hA = (logoA ? fitBox(logoA.box.w, logoA.box.h, LW, LH).h : 48);
+    return { c: c, ctx: ctx, fmt: fmt, W: W, H: H, M: 72, logoA: res[1], logoB: res[2], hasPhoto: bitmaps.length > 0 };
+  }
+  // Desenha sombras e logotipos; blockBottom: onde termina o texto do topo.
+  function finishCommon(st, blockBottom, leftShade) {
+    var ctx = st.ctx, base = st.H - st.fmt.safeBottom, gap = 26, LW = 380, LH = 170;
+    var hB = (st.logoB ? fitBox(st.logoB.box.w, st.logoB.box.h, LW, LH).h : 48);
+    var hA = (st.logoA ? fitBox(st.logoA.box.w, st.logoA.box.h, LW, LH).h : 48);
     var logosTop = base - hB - gap - hA;
-    drawShade(ctx, W, H, fmt.safeTop + 330, logosTop);
-    drawLogoLeft(ctx, logoA, 'GOLEIRO DE ALUGUEL', M, logosTop + hA, LW, LH);
-    drawLogoLeft(ctx, logoB, 'DIÁRIO DO GOLEIRO', M, base, LW, LH);
+    // Sombras por baixo do texto: só onde há texto ou logo.
+    drawShade(ctx, st.W, st.H, blockBottom, logosTop);
+    if (leftShade) { // escurece em volta do texto com bordas suaves (sobre foto clara o texto continua legível)
+      var cy = (st.fmt.safeTop + blockBottom) / 2, rad = Math.max(blockBottom - st.fmt.safeTop, st.W) * 0.75;
+      var rg = ctx.createRadialGradient(0, cy, 0, 0, cy, rad);
+      rg.addColorStop(0, 'rgba(0,0,0,.6)'); rg.addColorStop(0.6, 'rgba(0,0,0,.35)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = rg; ctx.fillRect(0, 0, st.W, st.H);
+    }
+    drawLogoLeft(ctx, st.logoA, 'GOLEIRO DE ALUGUEL', st.M, logosTop + hA, LW, LH);
+    drawLogoLeft(ctx, st.logoB, 'DIÁRIO DO GOLEIRO', st.M, base, LW, LH);
+  }
+
+  // game: jogo salvo. opts: { format: 'story'|'feed', bitmaps: [ImageBitmap|HTMLImageElement] }
+  async function render(game, opts) {
+    var st = await setup(opts), ctx = st.ctx, fmt = st.fmt, W = st.W, M = st.M;
+    // Os logos e as sombras vão por baixo do texto, que é desenhado depois.
+    finishCommon(st, fmt.safeTop + 330, false);
 
     // Placar no topo, alinhado à esquerda e levemente inclinado, como um adesivo.
     var r2 = resultFromScore(game);
@@ -221,7 +263,52 @@
       lines.forEach(function (ln, i) { ctx.fillText(ln, 0, y + 50 + i * 62); });
     }
     ctx.restore();
-    return c;
+    return st.c;
+  }
+
+  // Resumo do período. data: { mode:'month'|'year', today:'AAAA-MM-DD', summary: GDAStats.summarize(...) }
+  // opts: { format, bitmaps (no máximo uma foto de fundo) }
+  async function renderSummary(data, opts) {
+    var st = await setup({ format: opts.format, bitmaps: (opts.bitmaps || []).slice(0, 1) });
+    var ctx = st.ctx, fmt = st.fmt, W = st.W, M = st.M;
+    var title = periodTitle(data.mode, data.today), rows = summaryRows(data.summary);
+    var ROW = 98, top = fmt.safeTop + fmt.pad;
+    // altura do bloco: rótulo + título (+ ano) + linhas
+    var titleH = 150 + (title.sub ? 60 : 0);
+    var blockH = 84 + titleH + 30 + rows.length * ROW;
+    finishCommon(st, top + blockH + 90, st.hasPhoto);
+
+    ctx.save();
+    ctx.translate(M, top); ctx.rotate(-0.045);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 18;
+    ctx.font = '400 62px ' + MARKER; ctx.fillStyle = COLORS.V;
+    ctx.fillText('Meu resumo', 0, 56);
+    var y = 84;
+    var ts = shrinkFont(ctx, title.main.toUpperCase(), 700, 150, W - 2 * M);
+    ctx.font = '700 ' + ts + 'px ' + FONT; ctx.fillStyle = '#fff';
+    ctx.fillText(title.main.toUpperCase(), -4, y + ts * 0.84); y += ts * 0.84;
+    if (title.sub) {
+      ctx.font = '500 56px ' + FONT; ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.fillText(title.sub, 0, y + 62); y += 62;
+    }
+    y += 40;
+    ctx.restore(); // a lista fica reta; só o título é inclinado
+    ctx.save();
+    ctx.translate(M, top);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 18;
+    ctx.font = '700 86px ' + FONT;
+    var numW = 0; rows.forEach(function (r) { numW = Math.max(numW, ctx.measureText(String(r.value)).width); });
+    rows.forEach(function (r, i) { // números alinhados à esquerda e rótulos numa coluna só
+      var base = y + 74 + i * ROW;
+      ctx.font = '700 86px ' + FONT; ctx.fillStyle = r.color || '#fff';
+      ctx.fillText(String(r.value), 0, base);
+      ctx.font = '500 46px ' + FONT; ctx.fillStyle = 'rgba(255,255,255,.92)';
+      ctx.fillText(r.label, numW + 26, base);
+    });
+    ctx.restore();
+    return st.c;
   }
 
   function toBlob(canvas) {
@@ -231,6 +318,7 @@
   }
 
   api.render = render;
+  api.renderSummary = renderSummary;
   api.toBlob = toBlob;
   api.loadFont = loadFont;
   root.GDAShareImage = api;

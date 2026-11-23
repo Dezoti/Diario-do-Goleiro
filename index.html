@@ -179,6 +179,14 @@
       </div>
       <div class="stats" id="stCards"></div>
       <p class="hint" id="stNote" hidden></p>
+      <div class="st-box" id="stShareBox">
+        <h3>Resumo para o Instagram</h3>
+        <div class="photo-actions">
+          <button type="button" class="btn-sm" id="btnSumStory">Gerar story</button>
+          <button type="button" class="btn-sm" id="btnSumFeed">Gerar feed</button>
+        </div>
+        <small class="hint" id="stShareHint"></small>
+      </div>
       <div id="stChartBox" class="st-box" hidden>
         <h3>Nota ao longo do tempo <small id="stChartInfo"></small></h3>
         <svg id="stChart" viewBox="0 0 320 170" role="img" aria-label="Gráfico da nota por jogo"></svg>
@@ -193,7 +201,7 @@
   <!-- Imagem para o Instagram -->
   <dialog id="shareSheet" class="sheet menu">
     <div class="sheet-head">
-      <h2>Imagem para o Instagram</h2>
+      <h2 id="shTitle">Imagem para o Instagram</h2>
       <button type="button" class="icon-btn" id="shClose" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div>
@@ -204,7 +212,7 @@
       <div class="field" id="shPhotosField">
         <span>Fotos na imagem <small id="shCount"></small></span>
         <div class="photo-grid" id="shPhotos"></div>
-        <small class="hint">Toque para escolher (até 4). A ordem de toque é a ordem na imagem.</small>
+        <small class="hint" id="shHint">Toque para escolher (até 4). A ordem de toque é a ordem na imagem.</small>
       </div>
       <div class="preview"><canvas id="shPreview" aria-label="Pré-visualização"></canvas></div>
     </div>

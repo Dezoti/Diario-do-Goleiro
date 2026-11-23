@@ -389,6 +389,7 @@
   function renderStatsSheet() {
     $$('#stPeriod button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.m === statsMode ? 'true' : 'false'); });
     var list = GDAStats.filterPeriod(games, statsMode, todayIso()), s = GDAStats.summarize(list);
+    updateSummaryButtons(list);
     var pct = s.winRate == null ? '—' : Math.round(s.winRate * 100);
     $('#stCards').innerHTML =
       statCard('Jogos', s.total) + statCard('Vitórias', s.wins, '', s.wins > 0) + statCard('% vitórias', pct, s.winRate == null ? '' : '%') +
@@ -413,6 +414,31 @@
     }).join('');
   }
 
+  // Resumo do período em imagem: vale para "Este mês" e "Este ano".
+  function updateSummaryButtons(list) {
+    var ok = statsMode !== 'all' && list.length > 0;
+    $('#btnSumStory').disabled = !ok; $('#btnSumFeed').disabled = !ok;
+    $('#stShareHint').textContent = statsMode === 'all' ? 'Escolha "Este mês" ou "Este ano" para gerar o resumo.'
+      : !list.length ? 'Nenhum jogo neste período.' : 'Mostra jogos, vitórias, empates, derrotas e defesas do período.';
+  }
+  function openSummary(format) {
+    var today = todayIso(), list = GDAStats.filterPeriod(games, statsMode, today);
+    if (statsMode === 'all' || !list.length) return;
+    // Fotos dos jogos do período, dos mais recentes para os mais antigos.
+    var ids = [];
+    list.slice().sort(function (a, b) { return ((b.date || '') + (b.time || '')).localeCompare((a.date || '') + (a.time || '')); })
+      .forEach(function (g) { (g.photoIds || []).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); }); });
+    share.kind = 'summary'; share.game = null; share.format = format;
+    share.data = { mode: statsMode, today: today, summary: GDAStats.summarize(list) };
+    share.photoIds = ids.slice(0, 24); share.max = 1; share.picked = [];
+    $('#shTitle').textContent = 'Resumo para o Instagram';
+    $('#shHint').textContent = 'Toque numa foto para usar de fundo (opcional). Toque de novo para tirar.';
+    paintShare(true);
+    shareSheet.showModal();
+  }
+  $('#btnSumStory').addEventListener('click', function () { openSummary('story'); });
+  $('#btnSumFeed').addEventListener('click', function () { openSummary('feed'); });
+
   $('#btnStats').addEventListener('click', function () { renderStatsSheet(); statsSheet.showModal(); });
   $('#stClose').addEventListener('click', function () { statsSheet.close(); });
   $('#stPeriod').addEventListener('click', function (e) {
@@ -421,7 +447,7 @@
   });
 
   /* ---------- Imagem para o Instagram ---------- */
-  var shareSheet = $('#shareSheet'), share = { game: null, format: 'story', picked: [], canvas: null, seq: 0 };
+  var shareSheet = $('#shareSheet'), share = { kind: 'game', game: null, data: null, photoIds: [], max: 4, format: 'story', picked: [], canvas: null, seq: 0 };
 
   function updateInstagramField(g) {
     var field = $('#igField');
@@ -436,14 +462,17 @@
   function openShare(format) {
     var g = games.filter(function (x) { return x.id === editingId; })[0];
     if (!g) return;
-    share.game = g; share.format = format;
-    share.picked = (g.photoIds || []).slice(0, 1); // começa com a capa
+    share.kind = 'game'; share.game = g; share.data = null; share.format = format;
+    share.photoIds = (g.photoIds || []).slice(); share.max = GDAShareImage.MAX_PHOTOS;
+    share.picked = share.photoIds.slice(0, 1); // começa com a capa
+    $('#shTitle').textContent = 'Imagem do jogo';
+    $('#shHint').textContent = 'Toque para escolher (até 4). A ordem de toque é a ordem na imagem.';
     paintShare(true);
     shareSheet.showModal();
   }
 
   async function paintShare(rebuildPicker) {
-    var ids = share.game.photoIds || [], my = ++share.seq;
+    var ids = share.photoIds, my = ++share.seq;
     $$('#shFormat button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.f === share.format ? 'true' : 'false'); });
     $('#shPhotosField').hidden = !ids.length;
     if (rebuildPicker) {
@@ -457,7 +486,7 @@
       b.setAttribute('aria-pressed', n >= 0 ? 'true' : 'false');
       tag.hidden = n < 0; tag.textContent = n + 1;
     });
-    $('#shCount').textContent = ids.length ? '(' + share.picked.length + ' de ' + GDAShareImage.MAX_PHOTOS + ')' : '';
+    $('#shCount').textContent = !ids.length ? '' : share.max === 1 ? '(opcional)' : '(' + share.picked.length + ' de ' + share.max + ')';
 
     var bitmaps = [];
     for (var i = 0; i < share.picked.length; i++) {
@@ -466,7 +495,9 @@
         if (rec) bitmaps.push(await GDAPhotos.decodeImage(rec.blob));
       } catch (e) { console.warn('Foto fora da imagem:', e && (e.message || e)); }
     }
-    var canvas = await GDAShareImage.render(share.game, { format: share.format, bitmaps: bitmaps });
+    var canvas = share.kind === 'summary'
+      ? await GDAShareImage.renderSummary(share.data, { format: share.format, bitmaps: bitmaps })
+      : await GDAShareImage.render(share.game, { format: share.format, bitmaps: bitmaps });
     if (my !== share.seq) return; // escolha mudou enquanto desenhava
     share.canvas = canvas;
     var view = $('#shPreview'); view.width = canvas.width; view.height = canvas.height;
@@ -484,7 +515,8 @@
     var b = e.target.closest('.ph'); if (!b) return;
     var id = b.dataset.id, at = share.picked.indexOf(id);
     if (at >= 0) share.picked.splice(at, 1);
-    else if (share.picked.length >= GDAShareImage.MAX_PHOTOS) { toast('No máximo ' + GDAShareImage.MAX_PHOTOS + ' fotos na imagem.'); return; }
+    else if (share.max === 1) share.picked = [id]; // foto de fundo: troca a escolhida
+    else if (share.picked.length >= share.max) { toast('No máximo ' + share.max + ' fotos na imagem.'); return; }
     else share.picked.push(id);
     paintShare(false);
   });
@@ -492,7 +524,9 @@
   async function currentFile() {
     if (!share.canvas) await paintShare(false);
     var blob = await GDAShareImage.toBlob(share.canvas);
-    return new File([blob], GDAShareImage.fileName(share.game, share.format), { type: 'image/png' });
+    var name = share.kind === 'summary' ? GDAShareImage.summaryFileName(share.data.mode, share.data.today, share.format)
+                                        : GDAShareImage.fileName(share.game, share.format);
+    return new File([blob], name, { type: 'image/png' });
   }
   function saveFile(file) {
     var a = document.createElement('a'), u = URL.createObjectURL(file);

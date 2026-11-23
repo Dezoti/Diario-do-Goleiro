@@ -36,6 +36,12 @@
     return n ? { value: sum / n, n: n } : null;
   }
 
+  function total(games, field) {
+    var sum = 0;
+    games.forEach(function (g) { if (isNum(g[field])) sum += g[field]; });
+    return sum;
+  }
+
   function summarize(games) {
     games = games || [];
     var c = { V: 0, E: 0, D: 0 };
@@ -44,6 +50,7 @@
     return {
       total: games.length, wins: c.V, draws: c.E, losses: c.D, decided: decided,
       winRate: decided ? c.V / decided : null,
+      totalSaves: total(games, 'saves'),
       avgSaves: average(games, 'saves'),
       avgConceded: average(games, 'goalsConceded'),
       avgScored: average(games, 'goalsScored'),
