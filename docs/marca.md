@@ -36,3 +36,17 @@ Ponto de partida para criar o logotipo. Nada aqui está decidido.
 
 - Não copiar o logotipo, a luva ou o estilo de marcas existentes. Original e simples vence.
 - Se for usar uma fonte, conferir a licença (preferir fontes livres).
+
+## Decisão
+
+Escolhida a direção **luva + caderno**, no estilo do logotipo ilustrado do próprio usuário: `assets/logos/diario-do-goleiro.png` (luva escrevendo no caderno, contorno preto, creme e verde neon). Esse arquivo é o logotipo oficial.
+
+- Os ícones do app (`icons/`) saem dele, sobre o fundo escuro do app: `python3 scripts/gerar-icones.py`.
+- A imagem do Instagram usa o PNG direto, cortando a margem transparente (`share-image.js`).
+- Os esboços em SVG que vieram antes foram descartados.
+
+## Paleta e tipografia
+
+- Fundo do app e dos ícones: `#0f1115`. Destaque verde: `#22d35a`. Texto: `#f2f4f7`.
+- Resultado nas imagens do Instagram: vitória `#3ddc84`, empate `#ffc233`, derrota `#ff5d5d`.
+- Imagens do Instagram: fonte **Oswald** (700 e 500), licença livre (OFL), guardada em `assets/fonts/`.

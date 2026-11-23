@@ -86,9 +86,22 @@
     if (!logoCache[name]) {
       logoCache[name] = loadImage('assets/logos/' + name + '.png').then(function (img) {
         return img || loadImage('assets/logos/' + name + '.svg');
-      });
+      }).then(function (img) { return img && { img: img, box: opaqueBounds(img) }; });
     }
     return logoCache[name];
+  }
+  // Os arquivos de logo costumam ter margem transparente; mede só a parte desenhada para o tamanho sair certo.
+  function opaqueBounds(img) {
+    var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, full = { x: 0, y: 0, w: w, h: h };
+    try {
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      var d = x.getImageData(0, 0, w, h).data, x0 = w, y0 = h, x1 = -1, y1 = -1;
+      for (var yy = 0; yy < h; yy++) for (var xx = 0; xx < w; xx++) {
+        if (d[(yy * w + xx) * 4 + 3] > 16) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+      }
+      return x1 < 0 ? full : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+    } catch (e) { return full; }
   }
 
   /* ---------- Desenho ---------- */
@@ -140,12 +153,12 @@
     bot.addColorStop(0, 'rgba(0,0,0,0)'); bot.addColorStop(0.62, 'rgba(0,0,0,.78)'); bot.addColorStop(1, 'rgba(0,0,0,.92)');
     ctx.fillStyle = bot; ctx.fillRect(0, from, W, H - from);
   }
-  function drawLogo(ctx, img, fallbackText, cx, cy, maxW, maxH) {
+  function drawLogo(ctx, logo, fallbackText, cx, cy, maxW, maxH) {
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 18;
-    if (img) {
-      var b = fitBox(img.naturalWidth || img.width, img.naturalHeight || img.height, maxW, maxH);
-      ctx.drawImage(img, cx - b.w / 2, cy - b.h / 2, b.w, b.h);
+    if (logo) {
+      var r = logo.box, b = fitBox(r.w, r.h, maxW, maxH);
+      ctx.drawImage(logo.img, r.x, r.y, r.w, r.h, cx - b.w / 2, cy - b.h / 2, b.w, b.h);
     } else {
       var size = shrinkFont(ctx, fallbackText, 700, 44, maxW);
       ctx.font = '700 ' + size + 'px ' + FONT; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -167,9 +180,9 @@
     drawShade(ctx, W, H, fmt);
 
     // Logotipos no topo, dentro da área livre do Instagram.
-    var logoY = fmt.safeTop + 70;
-    drawLogo(ctx, logoA, 'GOLEIRO DE ALUGUEL', W * 0.28, logoY, 400, 120);
-    drawLogo(ctx, logoB, 'DIÁRIO DO GOLEIRO', W * 0.72, logoY, 400, 120);
+    var logoY = fmt.safeTop + 115;
+    drawLogo(ctx, logoA, 'GOLEIRO DE ALUGUEL', W * 0.27, logoY, 380, 190);
+    drawLogo(ctx, logoB, 'DIÁRIO DO GOLEIRO', W * 0.73, logoY, 380, 190);
 
     // Bloco inferior: resultado, placar e quadra, terminando acima da faixa do rodapé.
     var res2 = resultFromScore(game), bottom = H - fmt.safeBottom;

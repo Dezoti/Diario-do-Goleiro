@@ -63,12 +63,12 @@ Decisões técnicas:
 
 Para confirmar na hora de fazer: o texto de resultado segue o placar (VITÓRIA, EMPATE ou DERROTA). Se preferir que só vitórias mostrem o selo, é um ajuste pequeno.
 
-## 4. Logotipo e marca — M
+## 4. Logotipo e marca — M ✅ feito (luva + caderno)
 
 Pronto quando:
-- [ ] Uma direção de logotipo é escolhida entre as ideias de `docs/marca.md`.
-- [ ] Logo em SVG (versão colorida e versão de uma cor) e ícone do app (192, 512 e maskable) atualizados.
-- [ ] Paleta e tipografia registradas em `docs/marca.md`.
+- [x] Uma direção de logotipo é escolhida entre as ideias de `docs/marca.md`.
+- [x] Ícone do app (192, 512 e maskable) atualizado a partir do logotipo em PNG. (Versão SVG e de uma cor não foram feitas: o PNG com fundo transparente atende às imagens.)
+- [x] Paleta e tipografia registradas em `docs/marca.md`.
 
 ## Ideias para depois
 
