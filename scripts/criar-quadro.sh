@@ -19,16 +19,17 @@ label() { # nome cor descrição
   gh label create "$1" --repo "$REPO" --color "$2" --description "$3" --force >/dev/null
 }
 
-issue() { # título labels (corpo vem da entrada padrão)
+issue() { # título labels [fechada] (corpo vem da entrada padrão); "fechada" fecha a issue (item já feito)
   local body url
   body="$(cat)"
   if [ -n "$DRY" ]; then
-    echo "[simulação] issue: $1  [$2]"
+    echo "[simulação] issue: $1  [$2] ${3:+(já feita: será fechada)}"
     URLS+=("https://github.com/$REPO/issues/0")
     return
   fi
   url="$(gh issue create --repo "$REPO" --title "$1" --label "$2" --body "$body")"
   echo "Criada: $url"
+  if [ "${3:-}" = "fechada" ]; then gh issue close "$url" --repo "$REPO" --reason completed >/dev/null; echo "  (fechada: já está pronta)"; fi
   URLS+=("$url")
 }
 
@@ -41,7 +42,7 @@ label tamanho-P   ededed "Uma sessão de trabalho"
 label tamanho-M   d4c5f9 "Algumas sessões"
 label tamanho-G   b60205 "Várias etapas"
 
-issue "Barrar jogo já cadastrado" "melhoria,tamanho-P" <<'BODY'
+issue "Barrar jogo já cadastrado" "melhoria,tamanho-P" "fechada" <<'BODY'
 **Regra:** um jogo é duplicado quando já existe outro com a mesma data (dia, mês e ano) e o mesmo horário. Se o horário estiver vazio, não bloqueia.
 
 - [ ] Ao salvar um jogo novo duplicado, o app não salva e mostra "Já existe um jogo em 17/11/2026 às 18:00 (ARENA P10)", com botão para abrir o existente
@@ -53,7 +54,7 @@ issue "Barrar jogo já cadastrado" "melhoria,tamanho-P" <<'BODY'
 Detalhes no [ROADMAP](../blob/main/ROADMAP.md).
 BODY
 
-issue "Fotos no jogo" "melhoria,tamanho-M" <<'BODY'
+issue "Fotos no jogo" "melhoria,tamanho-M" "fechada" <<'BODY'
 Permitir várias fotos por jogo.
 
 - [ ] Botão "Adicionar fotos" (câmera ou galeria), várias por jogo
@@ -66,7 +67,7 @@ Permitir várias fotos por jogo.
 Detalhes no [ROADMAP](../blob/main/ROADMAP.md).
 BODY
 
-issue "Gerar imagem para Instagram (story e feed)" "melhoria,tamanho-G" <<'BODY'
+issue "Gerar imagem para Instagram (story e feed)" "melhoria,tamanho-G" "fechada" <<'BODY'
 Depende de: fotos no jogo e logotipos em `assets/logos/`.
 
 - [ ] Botões "Gerar story" (1080×1920) e "Gerar feed" (1080×1350) na tela do jogo
@@ -80,7 +81,7 @@ Depende de: fotos no jogo e logotipos em `assets/logos/`.
 Detalhes no [ROADMAP](../blob/main/ROADMAP.md).
 BODY
 
-issue "Logotipo e marca" "marca,tamanho-M" <<'BODY'
+issue "Logotipo e marca" "marca,tamanho-M" "fechada" <<'BODY'
 - [ ] Escolher uma direção entre as ideias de `docs/marca.md`
 - [ ] Logo em SVG (colorido e de uma cor) e ícone do app (192, 512 e maskable)
 - [ ] Registrar paleta e tipografia em `docs/marca.md`
