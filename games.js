@@ -33,7 +33,45 @@
     return g.time ? date + ' às ' + String(g.time).slice(0, 5) : date;
   }
 
-  var api = { findDuplicate: findDuplicate, describeSlot: describeSlot };
+  // Chave para comparar nomes de quadra: sem maiúsculas, acentos, pontuação nem espaços sobrando.
+  function venueKey(name) {
+    var s = String(name == null ? '' : name);
+    if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+  function cleanName(name) { return String(name == null ? '' : name).replace(/\s+/g, ' ').trim(); }
+
+  // Quadras já usadas, as mais frequentes primeiro. O nome escrito é o do jogo mais recente
+  // e o tipo de campo é o último preenchido naquela quadra.
+  function venueList(games) {
+    var by = {};
+    (games || []).forEach(function (g) {
+      var name = cleanName(g && g.venue), key = venueKey(name);
+      if (!key) return;
+      var e = by[key] || (by[key] = { key: key, name: name, count: 0, fieldType: null, _at: '', _ftAt: '' });
+      e.count++;
+      var at = (g.date || '') + ' ' + (g.time || '');
+      if (at >= e._at) { e._at = at; e.name = name; }
+      var ft = cleanName(g.fieldType);
+      if (ft && at >= e._ftAt) { e._ftAt = at; e.fieldType = ft; }
+    });
+    return Object.keys(by).map(function (k) { var e = by[k]; return { key: e.key, name: e.name, count: e.count, fieldType: e.fieldType }; })
+      .sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
+  }
+
+  // Se o nome é o de uma quadra já usada (ignorando maiúsculas, acentos e espaços), devolve o jeito
+  // que ela já está escrita. Quadra nova só tem os espaços arrumados.
+  function matchVenue(games, name) {
+    var clean = cleanName(name), key = venueKey(clean);
+    if (!key) return { name: clean, fieldType: null, known: false };
+    var list = venueList(games);
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].key === key) return { name: list[i].name, fieldType: list[i].fieldType, known: true };
+    }
+    return { name: clean, fieldType: null, known: false };
+  }
+
+  var api = { findDuplicate: findDuplicate, describeSlot: describeSlot, venueKey: venueKey, venueList: venueList, matchVenue: matchVenue };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.GDAGames = api;
 })(typeof window !== 'undefined' ? window : globalThis);

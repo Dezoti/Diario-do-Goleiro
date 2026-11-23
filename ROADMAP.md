@@ -1,6 +1,6 @@
 # Roadmap
 
-Backlog do Diário do Goleiro. Cada item tem uma regra clara do que significa "pronto". Itens 1 a 4 estão prontos. Ordem sugerida para os novos: 7 → 5 → 6.
+Backlog do Diário do Goleiro. Cada item tem uma regra clara do que significa "pronto". Itens 1 a 4 e 7 estão prontos. Ordem sugerida para os próximos: 5 → 6.
 
 Legenda de tamanho: **P** (uma sessão), **M** (algumas sessões), **G** (várias etapas).
 
@@ -16,6 +16,7 @@ Legenda de tamanho: **P** (uma sessão), **M** (algumas sessões), **G** (vária
 - [x] Fotos no jogo (várias por jogo, backup opcional com fotos)
 - [x] Imagem para Instagram (story e feed)
 - [x] Logotipo e ícones do app
+- [x] Autocompletar quadra
 
 ## 1. Barrar jogo já cadastrado — P (feito)
 
@@ -103,14 +104,14 @@ Pronto quando:
 
 Para confirmar na hora de fazer: se a nota média e os gols sofridos também entram, e se o resumo pode levar uma foto de fundo.
 
-## 7. Autocompletar quadra — P
+## 7. Autocompletar quadra — P ✅ feito
 
 Pronto quando:
-- [ ] Ao digitar a quadra no formulário, o app sugere as quadras já usadas (as mais frequentes primeiro).
-- [ ] Ao escolher uma sugestão, o tipo de campo é preenchido com o da última vez naquela quadra, se estiver vazio.
-- [ ] Nomes que mudam só em maiúsculas, acentos ou espaços sobrando contam como a mesma quadra (ex.: "Arena P10" e "ARENA P10 ").
-- [ ] A leitura de prints usa o nome já existente quando for igual a uma quadra salva.
-- [ ] A regra de comparação fica em função pura, com testes em `test/`.
+- [x] Ao digitar a quadra no formulário, o app sugere as quadras já usadas (as mais frequentes primeiro).
+- [x] Ao escolher uma sugestão, o tipo de campo é preenchido com o da última vez naquela quadra, se estiver vazio.
+- [x] Nomes que mudam só em maiúsculas, acentos ou espaços sobrando contam como a mesma quadra (ex.: "Arena P10" e "ARENA P10 ").
+- [x] A leitura de prints usa o nome já existente quando for igual a uma quadra salva.
+- [x] A regra de comparação fica em função pura, com testes em `test/`.
 
 Decisão técnica: lista de sugestões nativa do navegador (`<datalist>`), sem biblioteca.
 

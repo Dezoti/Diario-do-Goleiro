@@ -1,5 +1,5 @@
 // Guarda os arquivos do app para abrir rápido e funcionar sem internet.
-const CACHE = 'diario-goleiro-v6';
+const CACHE = 'diario-goleiro-v7';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'parser.js', 'games.js', 'photos.js', 'share-image.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

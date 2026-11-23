@@ -176,6 +176,17 @@
     document.querySelector('.stepper[data-key="' + key + '"] output').textContent = v == null ? '–' : v;
   }
 
+  // Quadras já usadas viram sugestões; escolher (ou digitar igual) mantém o nome já salvo e traz o tipo de campo.
+  function refreshVenueList() {
+    $('#venueList').innerHTML = GDAGames.venueList(games).map(function (v) { return '<option value="' + esc(v.name) + '">'; }).join('');
+  }
+  function applyVenue() {
+    var input = $('#fVenue'), m = GDAGames.matchVenue(games, input.value);
+    input.value = m.name;
+    if (m.known && m.fieldType && !$('#fField').value.trim()) $('#fField').value = m.fieldType;
+  }
+  $('#fVenue').addEventListener('change', applyVenue);
+
   function openForm(id) {
     editingId = id || null;
     var g = id ? games.filter(function (x) { return x.id === id; })[0] : null;
@@ -195,6 +206,7 @@
     draft = { concededAuto: !isNum(g.goalsConceded), photoIds: photoIds, originalPhotoIds: photoIds.slice(), newPhotoIds: [], finished: false };
     renderPhotoGrid();
     updateInstagramField(id ? g : null);
+    refreshVenueList();
     setResult(g.result);
     ['goalsScored', 'goalsConceded', 'saves'].forEach(function (k) { setStepper(k, isNum(g[k]) ? g[k] : null); });
     hideDup();
@@ -588,6 +600,7 @@
       if (r.time) { $('#fTime').value = r.time; found.push('horário'); }
       if (r.venue) { $('#fVenue').value = r.venue; found.push('quadra'); }
       if (r.fieldType) { $('#fField').value = r.fieldType; found.push('tipo de campo'); }
+      if (r.venue) applyVenue();
       if (r.rating != null) { $('#fRating').value = r.rating; found.push('nota'); }
       toast(found.length ? 'Li: ' + found.join(', ') + '. Confira os dados.' : 'Não achei dados nesse print. Preencha manualmente.');
       liveDupCheck(true);
@@ -609,7 +622,8 @@
         var r;
         try { r = await readPrint(files[i]); } catch (err) { if (err && err.message === 'offline') throw err; failed++; continue; }
         if (!r.date) { failed++; continue; }
-        var g = { id: uid(), date: r.date, time: r.time, venue: r.venue, fieldType: r.fieldType, rating: r.rating,
+        var vm = r.venue ? GDAGames.matchVenue(games, r.venue) : null;
+        var g = { id: uid(), date: r.date, time: r.time, venue: vm ? vm.name : r.venue, fieldType: r.fieldType || (vm && vm.fieldType) || null, rating: r.rating,
                   opponentKeeper: null, scoreFor: null, scoreAgainst: null, result: null,
                   goalsScored: null, goalsConceded: null, saves: null, notes: null };
         if (GDAGames.findDuplicate(games, g)) { dup++; continue; }
