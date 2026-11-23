@@ -22,6 +22,7 @@ index.html    telas, formulário, guia de instalação
 styles.css    visual (tema escuro, destaque verde #22d35a)
 app.js        lógica do app, OCR, backup, instalação e compartilhamento
 parser.js     extrai os campos do texto lido do print (também roda no Node)
+games.js      regras da lista de jogos, como achar jogo duplicado (também roda no Node)
 sw.js         offline: rede primeiro, cache como reserva (subir a versão do cache ao mudar arquivos)
 manifest.webmanifest, icons/   instalação como app
 test/         testes do parser (node:test)
@@ -35,7 +36,7 @@ ROADMAP.md    backlog e ordem de trabalho
 
 ```bash
 npm start   # servidor local em http://localhost:8080
-npm test    # testes do parser
+npm test    # testes do parser e das regras de jogos
 ```
 
 ## Cuidados ao mexer

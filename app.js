@@ -177,6 +177,7 @@
     draft = { concededAuto: !isNum(g.goalsConceded) };
     setResult(g.result);
     ['goalsScored', 'goalsConceded', 'saves'].forEach(function (k) { setStepper(k, isNum(g[k]) ? g[k] : null); });
+    hideDup();
     document.body.style.overflow = 'hidden';
     sheet.showModal();
     sheet.scrollTop = 0;
@@ -212,10 +213,46 @@
     };
   }
 
+  /* Jogo duplicado: mesma data e mesmo horário (sem horário, não bloqueia). */
+  var dupId = null;
+
+  function currentDuplicate() {
+    var data = readForm();
+    if (editingId) {
+      var original = games.filter(function (g) { return g.id === editingId; })[0];
+      // Só confere se a data ou o horário mudaram em relação ao que já estava salvo.
+      if (original && original.date === data.date && (original.time || '') === (data.time || '')) return null;
+    }
+    return GDAGames.findDuplicate(games, data, editingId);
+  }
+  function showDup(dup, scroll) {
+    dupId = dup.id;
+    $('#dupText').textContent = 'Já existe um jogo em ' + GDAGames.describeSlot(dup) +
+      (dup.venue ? ' (' + dup.venue + ')' : '') + '. Não dá para cadastrar dois jogos na mesma data e horário.';
+    var box = $('#dupAlert');
+    box.hidden = false;
+    if (scroll) {
+      box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+      box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+  function hideDup() { dupId = null; $('#dupAlert').hidden = true; }
+  function liveDupCheck(scroll) {
+    var dup = currentDuplicate();
+    if (dup) showDup(dup, scroll); else hideDup();
+  }
+  $('#fDate').addEventListener('input', function () { liveDupCheck(false); });
+  $('#fTime').addEventListener('input', function () { liveDupCheck(false); });
+  $('#dupOpen').addEventListener('click', function () {
+    var id = dupId; closeForm(); if (id) openForm(id);
+  });
+
   $('#form').addEventListener('submit', function (e) {
     e.preventDefault();
     var data = readForm();
     if (!data.date) { toast('Informe a data do jogo.'); return; }
+    var dup = currentDuplicate();
+    if (dup) { showDup(dup, true); return; }
     if (editingId) {
       games = games.map(function (g) { return g.id === editingId ? Object.assign({}, g, data) : g; });
     } else {
@@ -361,6 +398,7 @@
       if (r.fieldType) { $('#fField').value = r.fieldType; found.push('tipo de campo'); }
       if (r.rating != null) { $('#fRating').value = r.rating; found.push('nota'); }
       toast(found.length ? 'Li: ' + found.join(', ') + '. Confira os dados.' : 'Não achei dados nesse print. Preencha manualmente.');
+      liveDupCheck(true);
     } catch (err) { ocrError(err); }
     finally { unbusy(); closeWorker(); }
   });
@@ -371,8 +409,6 @@
     var files = Array.prototype.slice.call(e.target.files); e.target.value = '';
     if (!files.length) return;
     var added = 0, dup = 0, failed = 0;
-    var keyOf = function (g) { return [g.date, g.time || '', (g.venue || '').toLowerCase()].join('|'); };
-    var seen = {}; games.forEach(function (g) { seen[keyOf(g)] = true; });
     try {
       for (var i = 0; i < files.length; i++) {
         var label = 'Lendo print ' + (i + 1) + ' de ' + files.length + '…';
@@ -384,8 +420,8 @@
         var g = { id: uid(), date: r.date, time: r.time, venue: r.venue, fieldType: r.fieldType, rating: r.rating,
                   opponentKeeper: null, scoreFor: null, scoreAgainst: null, result: null,
                   goalsScored: null, goalsConceded: null, saves: null, notes: null };
-        if (seen[keyOf(g)]) { dup++; continue; }
-        seen[keyOf(g)] = true; games.push(g); added++;
+        if (GDAGames.findDuplicate(games, g)) { dup++; continue; }
+        games.push(g); added++;
       }
       persist(); render();
       var parts = [added + (added === 1 ? ' jogo adicionado' : ' jogos adicionados')];
@@ -437,11 +473,17 @@
       if (!Array.isArray(list)) throw new Error('formato');
       list = list.filter(function (g) { return g && typeof g.date === 'string'; });
       if (!list.length) throw new Error('vazio');
-      if (!confirm('Importar ' + list.length + ' jogo(s)? Jogos com o mesmo código serão substituídos.')) return;
-      var byId = {}; games.forEach(function (g) { byId[g.id] = g; });
-      list.forEach(function (g) { g.id = g.id || uid(); byId[g.id] = g; });
-      games = Object.keys(byId).map(function (k) { return byId[k]; });
-      persist(); menu.close(); render(); toast(list.length + ' jogo(s) importado(s).');
+      if (!confirm('Importar ' + list.length + ' jogo(s)? Jogos de uma data e horário que já existem serão pulados.')) return;
+      var imported = 0, skipped = 0;
+      list.forEach(function (g) {
+        g.id = g.id || uid();
+        if (GDAGames.findDuplicate(games, g, g.id)) { skipped++; return; }
+        var at = games.findIndex(function (x) { return x.id === g.id; });
+        if (at >= 0) games[at] = g; else games.push(g);
+        imported++;
+      });
+      persist(); menu.close(); render();
+      toast(imported + ' jogo(s) importado(s)' + (skipped ? ' · ' + skipped + ' já existia' + (skipped === 1 ? '' : 'm') : '') + '.');
     } catch (err) { toast('Esse arquivo não parece um backup válido.'); }
   });
 

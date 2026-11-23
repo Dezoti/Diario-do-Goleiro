@@ -12,17 +12,18 @@ Legenda de tamanho: **P** (uma sessão), **M** (algumas sessões), **G** (vária
 - [x] Backup em JSON e exportação em CSV
 - [x] Instalação como app (PWA) com guia dentro do app e botão de compartilhar
 - [x] Hospedagem no GitHub Pages
+- [x] Barrar jogo já cadastrado (mesma data e horário)
 
-## 1. Barrar jogo já cadastrado — P
+## 1. Barrar jogo já cadastrado — P (feito)
 
 **Regra:** um jogo é duplicado quando já existe outro com a **mesma data (dia, mês e ano) e o mesmo horário**.
 
 Pronto quando:
-- [ ] Ao salvar um jogo novo, se for duplicado, o app não salva e mostra a mensagem "Já existe um jogo em 17/11/2026 às 18:00 (ARENA P10)", com um botão para abrir o jogo existente.
-- [ ] Ao editar, o jogo não conta contra si mesmo. Mudar a data ou o horário para os de outro jogo também é barrado.
-- [ ] Na importação de vários prints, os duplicados são pulados e contados no aviso final. Hoje a comparação inclui a quadra; passa a ser só data e horário.
-- [ ] Na importação de backup, jogos duplicados (com `id` diferente) são pulados e contados.
-- [ ] A regra fica em uma função pura (`findDuplicate`) com testes em `test/`.
+- [x] Ao salvar um jogo novo, se for duplicado, o app não salva e mostra a mensagem "Já existe um jogo em 17/11/2026 às 18:00 (ARENA P10)", com um botão para abrir o jogo existente.
+- [x] Ao editar, o jogo não conta contra si mesmo. Mudar a data ou o horário para os de outro jogo também é barrado.
+- [x] Na importação de vários prints, os duplicados são pulados e contados no aviso final. Hoje a comparação inclui a quadra; passa a ser só data e horário.
+- [x] Na importação de backup, jogos duplicados (com `id` diferente) são pulados e contados.
+- [x] A regra fica em uma função pura (`findDuplicate`) com testes em `test/`.
 
 **Decidido:** o jogo normalmente sempre terá horário. Se o horário estiver vazio, o jogo **não bloqueia** nem é bloqueado, porque sem horário não dá para afirmar que é o mesmo jogo.
 

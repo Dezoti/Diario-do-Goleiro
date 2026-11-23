@@ -13,6 +13,7 @@ no próprio aparelho.
 - **Lista de jogos** com filtro por resultado e por jogos pendentes.
 - **Novo jogo** com leitura de print, placar, resultado automático, contadores de gols e defesas, nota e observações.
 - **Importar vários prints** de uma vez: cada print vira um jogo pendente para completar depois.
+- **Sem jogo repetido:** o app barra um jogo com a mesma data e o mesmo horário de outro já cadastrado.
 - **Backup** em JSON (exportar e importar) e **planilha CSV**.
 - Funciona offline depois da primeira abertura e pode ser instalado na tela inicial (PWA), com guia de instalação dentro do app (Android e iPhone) e botão para compartilhar o link.
 
@@ -50,7 +51,7 @@ os jogos de outro. Use **Dados → Exportar backup** de vez em quando.
 npm test
 ```
 
-Cobre o `parser.js` com saídas reais de OCR de prints do app.
+Cobre o `parser.js` (com saídas reais de OCR de prints do app) e o `games.js`.
 
 ## Estrutura
 
@@ -59,6 +60,7 @@ index.html   telas e formulário
 styles.css   visual
 app.js       lógica do app, OCR e backup
 parser.js    extrai os campos do texto lido do print
+games.js     regras da lista de jogos (jogo duplicado)
 sw.js        funcionamento offline
 manifest.webmanifest, icons/   instalação como app
 test/        testes do parser
