@@ -102,6 +102,15 @@
         <div class="rating"><input type="number" inputmode="numeric" min="0" max="30" id="fRating" placeholder="30"><em>/ 30</em></div>
       </label>
 
+      <div class="field">
+        <span>Fotos <small id="photoCount"></small></span>
+        <div class="photo-grid" id="photoGrid"></div>
+        <div class="photo-actions">
+          <button type="button" class="btn-sm" id="btnShoot">📷 Tirar foto</button>
+          <button type="button" class="btn-sm" id="btnGallery">🖼️ Da galeria</button>
+        </div>
+      </div>
+
       <label class="field"><span>Observações</span><textarea id="fNotes" rows="3" placeholder="Como foi o jogo?"></textarea></label>
 
       <div class="dup-alert" id="dupAlert" role="alert" hidden>
@@ -124,6 +133,7 @@
     <p class="hint">Os jogos ficam salvos neste aparelho. Faça um backup de vez em quando.</p>
     <button class="menu-item" id="mInstall">Instalar o app / compartilhar</button>
     <button class="menu-item" id="mExportJson">Exportar backup (JSON)</button>
+    <button class="menu-item" id="mExportJsonPhotos">Exportar backup com fotos (JSON)</button>
     <button class="menu-item" id="mImportJson">Importar backup (JSON)</button>
     <button class="menu-item" id="mExportCsv">Exportar planilha (CSV)</button>
   </dialog>
@@ -143,15 +153,32 @@
     </div>
   </dialog>
 
+  <!-- Visualizador de fotos -->
+  <dialog id="viewer" class="viewer">
+    <div class="viewer-top">
+      <span id="vCount"></span>
+      <button type="button" class="icon-btn" id="vClose" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="viewer-img"><img id="vImg" alt="Foto do jogo"></div>
+    <div class="viewer-bar">
+      <button type="button" class="btn-sm" id="vBefore">← Antes</button>
+      <button type="button" class="btn-sm" id="vAfter">Depois →</button>
+      <button type="button" class="btn-sm danger" id="vRemove">Remover</button>
+    </div>
+  </dialog>
+
   <div class="busy" id="busy" hidden><div class="busy-card"><div class="spinner" aria-hidden="true"></div><p id="busyText">Lendo print…</p><div class="bar"><i id="busyBar"></i></div></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <input type="file" id="filePrint" accept="image/*" hidden>
   <input type="file" id="filePrints" accept="image/*" multiple hidden>
+ <input type="file" id="fileShoot" accept="image/*" capture="environment" hidden>
+  <input type="file" id="fileGallery" accept="image/*" multiple hidden>
   <input type="file" id="fileBackup" accept="application/json,.json" hidden>
 
   <script src="parser.js"></script>
   <script src="games.js"></script>
+  <script src="photos.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

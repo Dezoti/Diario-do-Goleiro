@@ -140,10 +140,26 @@
       '<div class="date"><b>' + (d ? d.getDate() : '–') + '</b><small>' + (d ? WEEKDAYS[d.getDay()] + ' ' + MONTHS[d.getMonth()] : '') + '</small></div>' +
       '<div class="info"><h3>' + esc(g.venue || 'Quadra não informada') + '</h3>' + (sub ? '<p>' + esc(sub) + '</p>' : '') +
       (tags ? '<div class="meta">' + tags + '</div>' : '') + '</div>' +
-      '<div class="side">' + main + rating + '</div></div>';
+      '<div class="side">' + main + rating + '</div>' + photoStrip(g) + '</div>';
   }
 
-  function render() { renderStats(); renderChips(); renderList(); }
+  function photoStrip(g) {
+    var ids = Array.isArray(g.photoIds) ? g.photoIds : [];
+    if (!ids.length) return '';
+    var shown = ids.slice(0, 3).map(function (id) { return '<img data-photo="' + esc(id) + '" alt="">'; }).join('');
+    var more = ids.length > 3 ? '<span class="more">+' + (ids.length - 3) + '</span>' : '';
+    return '<div class="card-photos">' + shown + more + '</div>';
+  }
+  // Troca os espaços reservados pelas miniaturas guardadas no IndexedDB.
+  function hydratePhotos(root) {
+    root.querySelectorAll('img[data-photo]').forEach(function (img) {
+      GDAPhotos.url(img.dataset.photo, 'thumb').then(function (u) {
+        if (u) img.src = u; else img.remove();
+      }).catch(function () { img.remove(); });
+    });
+  }
+
+  function render() { renderStats(); renderChips(); renderList(); hydratePhotos($('#list')); }
 
   /* ---------- Formulário ---------- */
   var sheet = $('#sheet');
@@ -174,7 +190,9 @@
     $('#fScoreAgainst').value = isNum(g.scoreAgainst) ? g.scoreAgainst : '';
     $('#fRating').value = isNum(g.rating) ? g.rating : '';
     $('#fNotes').value = g.notes || '';
-    draft = { concededAuto: !isNum(g.goalsConceded) };
+    var photoIds = Array.isArray(g.photoIds) ? g.photoIds.slice() : [];
+    draft = { concededAuto: !isNum(g.goalsConceded), photoIds: photoIds, originalPhotoIds: photoIds.slice(), newPhotoIds: [], finished: false };
+    renderPhotoGrid();
     setResult(g.result);
     ['goalsScored', 'goalsConceded', 'saves'].forEach(function (k) { setStepper(k, isNum(g[k]) ? g[k] : null); });
     hideDup();
@@ -183,8 +201,20 @@
     sheet.scrollTop = 0;
   }
 
-  function closeForm() { if (sheet.open) sheet.close(); }
-  sheet.addEventListener('close', function () { document.body.style.overflow = ''; });
+  // Fotos adicionadas e não salvas são apagadas ao sair do formulário sem salvar.
+  function finishForm(saved) {
+    if (draft.finished) return;
+    draft.finished = true;
+    if (!saved) draft.newPhotoIds.forEach(function (id) { GDAPhotos.remove(id); });
+  }
+  function closeForm(saved) {
+    finishForm(saved === true);
+    if (sheet.open) sheet.close();
+  }
+  sheet.addEventListener('close', function () {
+    document.body.style.overflow = '';
+    if (!sheet.open) finishForm(false); // fechado pela tecla Esc ou pelo botão voltar
+  });
   sheet.addEventListener('click', function (e) { if (e.target === sheet) closeForm(); });
 
   function onScoreInput() {
@@ -209,7 +239,8 @@
       goalsConceded: draft.goalsConceded,
       saves: draft.saves,
       rating: rating,
-      notes: $('#fNotes').value.trim() || null
+      notes: $('#fNotes').value.trim() || null,
+      photoIds: draft.photoIds.slice()
     };
   }
 
@@ -260,18 +291,22 @@
       games.push(data);
     }
     persist();
-    closeForm();
+    draft.originalPhotoIds.filter(function (id) { return draft.photoIds.indexOf(id) < 0; })
+      .forEach(function (id) { GDAPhotos.remove(id); });
+    closeForm(true);
     render();
     toast(editingId ? 'Jogo atualizado.' : 'Jogo salvo.');
   });
 
   $('#btnDelete').addEventListener('click', function () {
     if (!editingId || !confirm('Excluir este jogo?')) return;
+    var gone = games.filter(function (g) { return g.id === editingId; })[0];
+    ((gone && gone.photoIds) || []).forEach(function (id) { GDAPhotos.remove(id); });
     games = games.filter(function (g) { return g.id !== editingId; });
     persist(); closeForm(); render(); toast('Jogo excluído.');
   });
 
-  $('#btnClose').addEventListener('click', closeForm);
+  $('#btnClose').addEventListener('click', function () { closeForm(); });
   $('#fScoreFor').addEventListener('input', onScoreInput);
   $('#fScoreAgainst').addEventListener('input', onScoreInput);
   $('#fResult').addEventListener('click', function (e) {
@@ -303,6 +338,80 @@
   });
   $('#fab').addEventListener('click', function () { openForm(); });
 
+  /* ---------- Fotos do jogo ---------- */
+  var viewer = $('#viewer'), viewerIdx = 0;
+
+  function renderPhotoGrid() {
+    var ids = draft.photoIds;
+    $('#photoCount').textContent = ids.length ? '(' + ids.length + ')' : '';
+    $('#photoGrid').innerHTML = ids.map(function (id, i) {
+      return '<button type="button" class="ph" data-i="' + i + '" aria-label="Foto ' + (i + 1) + '">' +
+        '<img data-photo="' + esc(id) + '" alt="">' + (i === 0 ? '<span class="ph-badge">Capa</span>' : '') + '</button>';
+    }).join('');
+    hydratePhotos($('#photoGrid'));
+  }
+
+  async function addPhotos(files) {
+    files = Array.prototype.slice.call(files);
+    if (!files.length) return;
+    if (!GDAPhotos.available) { toast('Este navegador não consegue guardar fotos.'); return; }
+    var ok = 0, failed = 0;
+    try {
+      for (var i = 0; i < files.length; i++) {
+        busy('Preparando foto ' + (i + 1) + ' de ' + files.length + '…', i / files.length);
+        try {
+          var id = await GDAPhotos.add(files[i]);
+          draft.photoIds.push(id); draft.newPhotoIds.push(id); ok++;
+        } catch (err) { console.warn('Foto não adicionada:', err && (err.message || err)); failed++; }
+      }
+    } finally { unbusy(); }
+    renderPhotoGrid();
+    if (ok && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {});
+    toast(failed ? ok + ' foto(s) adicionada(s) · ' + failed + ' não deu para ler.' : ok + (ok === 1 ? ' foto adicionada.' : ' fotos adicionadas.'));
+  }
+
+  $('#btnShoot').addEventListener('click', function () { $('#fileShoot').click(); });
+  $('#btnGallery').addEventListener('click', function () { $('#fileGallery').click(); });
+  ['#fileShoot', '#fileGallery'].forEach(function (sel) {
+    $(sel).addEventListener('change', function (e) {
+      var files = e.target.files; var list = Array.prototype.slice.call(files); e.target.value = '';
+      addPhotos(list);
+    });
+  });
+  $('#photoGrid').addEventListener('click', function (e) {
+    var b = e.target.closest('.ph'); if (!b) return;
+    viewerIdx = +b.dataset.i; paintViewer(); viewer.showModal();
+  });
+
+  async function paintViewer() {
+    var ids = draft.photoIds;
+    if (!ids.length) { if (viewer.open) viewer.close(); return; }
+    viewerIdx = Math.max(0, Math.min(viewerIdx, ids.length - 1));
+    $('#vCount').textContent = (viewerIdx + 1) + ' de ' + ids.length + (viewerIdx === 0 ? ' · capa' : '');
+    $('#vBefore').disabled = viewerIdx === 0;
+    $('#vAfter').disabled = viewerIdx === ids.length - 1;
+    var u = await GDAPhotos.url(ids[viewerIdx], 'blob');
+    if (u) $('#vImg').src = u;
+  }
+  function moveViewer(d) {
+    var ids = draft.photoIds, j = viewerIdx + d;
+    if (j < 0 || j >= ids.length) return;
+    var t = ids[viewerIdx]; ids[viewerIdx] = ids[j]; ids[j] = t;
+    viewerIdx = j; paintViewer(); renderPhotoGrid();
+  }
+  $('#vBefore').addEventListener('click', function () { moveViewer(-1); });
+  $('#vAfter').addEventListener('click', function () { moveViewer(1); });
+  $('#vClose').addEventListener('click', function () { viewer.close(); });
+  $('#vRemove').addEventListener('click', function () {
+    var id = draft.photoIds[viewerIdx];
+    if (!id || !confirm('Remover esta foto?')) return;
+    draft.photoIds.splice(viewerIdx, 1);
+    var n = draft.newPhotoIds.indexOf(id);
+    if (n >= 0) { draft.newPhotoIds.splice(n, 1); GDAPhotos.remove(id); } // nunca foi salva: apaga já
+    // Se já estava salva, só some do jogo ao tocar em Salvar.
+    paintViewer(); renderPhotoGrid();
+  });
+
   /* ---------- Leitura de prints (OCR no próprio aparelho) ---------- */
   var worker = null, onProgress = function () {};
 
@@ -333,18 +442,7 @@
     worker = null;
   }
 
-  // createImageBitmap é rígido com arquivos levemente corrompidos; o <img> aceita mais casos.
-  async function decodeImage(file) {
-    try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
-    catch (e1) {
-      return new Promise(function (resolve, reject) {
-        var url = URL.createObjectURL(file), img = new Image();
-        img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
-        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('imagem')); };
-        img.src = url;
-      });
-    }
-  }
+  var decodeImage = GDAPhotos.decodeImage;
 
   // Prints do app são escuros: converte para cinza e inverte, o que melhora muito a leitura.
   async function prepareImage(file) {
@@ -450,7 +548,26 @@
 
   $('#mExportJson').addEventListener('click', function () {
     download('diario-do-goleiro-' + stamp() + '.json', JSON.stringify(games, null, 2), 'application/json');
-    menu.close(); toast('Backup exportado.');
+    menu.close();
+    var hasPhotos = games.some(function (g) { return g.photoIds && g.photoIds.length; });
+    toast(hasPhotos ? 'Backup exportado, sem as fotos. Use "com fotos" para incluí-las.' : 'Backup exportado.');
+  });
+  $('#mExportJsonPhotos').addEventListener('click', async function () {
+    menu.close();
+    var ids = [];
+    games.forEach(function (g) { (g.photoIds || []).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); }); });
+    try {
+      var fotos = [];
+      for (var i = 0; i < ids.length; i++) {
+        busy('Preparando foto ' + (i + 1) + ' de ' + ids.length + '…', i / Math.max(1, ids.length));
+        var dados = await GDAPhotos.toDataURL(ids[i]);
+        if (dados) fotos.push({ id: ids[i], dados: dados });
+      }
+      var text = JSON.stringify({ formato: 'diario-do-goleiro', versao: 2, jogos: games, fotos: fotos });
+      download('diario-do-goleiro-com-fotos-' + stamp() + '.json', text, 'application/json');
+      toast('Backup com ' + fotos.length + ' foto(s) exportado (' + (text.length / 1048576).toFixed(1).replace('.', ',') + ' MB).');
+    } catch (err) { toast('Não consegui preparar o backup com fotos.'); }
+    finally { unbusy(); }
   });
   $('#mExportCsv').addEventListener('click', function () {
     var head = ['Data', 'Horário', 'Quadra', 'Tipo de campo', 'Goleiro adversário', 'Placar', 'Resultado', 'Gols marcados', 'Gols sofridos', 'Defesas', 'Nota do jogo', 'Observações'];
@@ -469,24 +586,48 @@
     var file = e.target.files[0]; e.target.value = '';
     if (!file) return;
     try {
-      var list = JSON.parse(await file.text());
-      if (!Array.isArray(list)) throw new Error('formato');
+      var data = JSON.parse(await file.text());
+      var list = Array.isArray(data) ? data : (data && Array.isArray(data.jogos) ? data.jogos : null);
+      if (!list) throw new Error('formato');
+      var fotos = data && Array.isArray(data.fotos) ? data.fotos : [];
       list = list.filter(function (g) { return g && typeof g.date === 'string'; });
       if (!list.length) throw new Error('vazio');
-      if (!confirm('Importar ' + list.length + ' jogo(s)? Jogos de uma data e horário que já existem serão pulados.')) return;
-      var imported = 0, skipped = 0;
+      if (!confirm('Importar ' + list.length + ' jogo(s)' + (fotos.length ? ' e ' + fotos.length + ' foto(s)' : '') +
+                   '? Jogos de uma data e horário que já existem serão pulados.')) return;
+
+      var working = games.slice(), imported = [], skipped = 0;
       list.forEach(function (g) {
         g.id = g.id || uid();
-        if (GDAGames.findDuplicate(games, g, g.id)) { skipped++; return; }
-        var at = games.findIndex(function (x) { return x.id === g.id; });
-        if (at >= 0) games[at] = g; else games.push(g);
-        imported++;
+        if (GDAGames.findDuplicate(working, g, g.id)) { skipped++; return; }
+        var at = working.findIndex(function (x) { return x.id === g.id; });
+        if (at >= 0) working[at] = g; else working.push(g);
+        imported.push(g);
       });
-      persist(); menu.close(); render();
-      toast(imported + ' jogo(s) importado(s)' + (skipped ? ' · ' + skipped + ' já existia' + (skipped === 1 ? '' : 'm') : '') + '.');
-    } catch (err) { toast('Esse arquivo não parece um backup válido.'); }
-  });
 
+      // Fotos: só as dos jogos importados; as que já existem neste aparelho são mantidas.
+      var dadosPorId = {};
+      fotos.forEach(function (f) { if (f && f.id && f.dados) dadosPorId[f.id] = f.dados; });
+      var photoCount = 0;
+      busy('Importando…', 0);
+      for (var i = 0; i < imported.length; i++) {
+        var ids = Array.isArray(imported[i].photoIds) ? imported[i].photoIds : [], keep = [];
+        for (var k = 0; k < ids.length; k++) {
+          if (GDAPhotos.available && await GDAPhotos.exists(ids[k])) { keep.push(ids[k]); continue; }
+          if (GDAPhotos.available && dadosPorId[ids[k]]) {
+            try { await GDAPhotos.addDataUrl(dadosPorId[ids[k]], ids[k]); keep.push(ids[k]); photoCount++; }
+            catch (err) { console.warn('Foto do backup não importada:', err && (err.message || err)); }
+          }
+        }
+        imported[i].photoIds = keep;
+        busy('Importando…', (i + 1) / imported.length);
+      }
+      games = working;
+      persist(); menu.close(); render();
+      toast(imported.length + ' jogo(s) importado(s)' + (photoCount ? ' com ' + photoCount + ' foto(s)' : '') +
+            (skipped ? ' · ' + skipped + ' já existia' + (skipped === 1 ? '' : 'm') : '') + '.');
+    } catch (err) { toast('Esse arquivo não parece um backup válido.'); }
+    finally { unbusy(); }
+  });
 
   /* ---------- Instalação e compartilhamento ---------- */
   var DISMISS_KEY = 'diario-goleiro:install-dismissed';

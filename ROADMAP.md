@@ -27,14 +27,14 @@ Pronto quando:
 
 **Decidido:** o jogo normalmente sempre terá horário. Se o horário estiver vazio, o jogo **não bloqueia** nem é bloqueado, porque sem horário não dá para afirmar que é o mesmo jogo.
 
-## 2. Fotos no jogo — M
+## 2. Fotos no jogo — M ✅ feito
 
 Pronto quando:
-- [ ] O formulário tem o botão "Adicionar fotos", que abre a câmera ou a galeria e aceita **várias fotos** por jogo.
-- [ ] Cada foto é reduzida antes de salvar (lado maior de 1600 px, JPEG com qualidade em torno de 0,82) para não estourar o armazenamento.
-- [ ] As fotos aparecem como miniaturas no formulário e no cartão do jogo (a primeira como capa). Tocar abre em tamanho maior. Dá para remover e reordenar.
-- [ ] Jogos antigos, sem foto, continuam funcionando.
-- [ ] O backup tem a opção **"incluir fotos"**. O padrão é exportar **sem** fotos; ao importar, jogos continuam com as fotos que já têm neste aparelho.
+- [x] O formulário tem o botão "Adicionar fotos", que abre a câmera ou a galeria e aceita **várias fotos** por jogo.
+- [x] Cada foto é reduzida antes de salvar (lado maior de 1600 px, JPEG com qualidade em torno de 0,82) para não estourar o armazenamento.
+- [x] As fotos aparecem como miniaturas no formulário e no cartão do jogo (a primeira como capa). Tocar abre em tamanho maior. Dá para remover e reordenar.
+- [x] Jogos antigos, sem foto, continuam funcionando.
+- [x] O backup tem a opção **"incluir fotos"**. O padrão é exportar **sem** fotos; ao importar, jogos continuam com as fotos que já têm neste aparelho.
 
 Decisões técnicas:
 - O `localStorage` tem limite de cerca de 5 MB, então as fotos vão para o **IndexedDB**. O jogo guarda só as referências (`photoIds`, uma lista).
