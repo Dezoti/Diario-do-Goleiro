@@ -1,6 +1,6 @@
 # Roadmap
 
-Backlog do Diário do Goleiro. Cada item tem uma regra clara do que significa "pronto". Itens 1 a 4 e 7 estão prontos. Ordem sugerida para os próximos: 5 → 6.
+Backlog do Diário do Goleiro. Cada item tem uma regra clara do que significa "pronto". Itens 1 a 5 e 7 estão prontos. O próximo é o 6.
 
 Legenda de tamanho: **P** (uma sessão), **M** (algumas sessões), **G** (várias etapas).
 
@@ -17,6 +17,7 @@ Legenda de tamanho: **P** (uma sessão), **M** (algumas sessões), **G** (vária
 - [x] Imagem para Instagram (story e feed)
 - [x] Logotipo e ícones do app
 - [x] Autocompletar quadra
+- [x] Estatísticas e evolução
 
 ## 1. Barrar jogo já cadastrado — P (feito)
 
@@ -74,16 +75,16 @@ Pronto quando:
 - [x] Ícone do app (192, 512 e maskable) atualizado a partir do logotipo em PNG. (Versão SVG e de uma cor não foram feitas: o PNG com fundo transparente atende às imagens.)
 - [x] Paleta e tipografia registradas em `docs/marca.md`.
 
-## 5. Estatísticas e evolução — M
+## 5. Estatísticas e evolução — M ✅ feito
 
 Pronto quando:
-- [ ] Há uma tela de **Estatísticas**, aberta por um botão no topo.
-- [ ] Mostra os totais: jogos, vitórias, empates e derrotas, % de vitórias, média de defesas por jogo, média de gols sofridos por jogo e média da nota (de 30).
-- [ ] Mostra a **evolução da nota** ao longo do tempo, em gráfico simples.
-- [ ] Mostra o **desempenho por quadra**: jogos, vitórias e média da nota, das mais jogadas para as menos.
-- [ ] Dá para escolher o período: este mês, este ano ou tudo.
-- [ ] Com poucos jogos (menos de 3), mostra um aviso em vez de gráficos vazios.
-- [ ] Os cálculos ficam em funções puras, com testes em `test/`.
+- [x] Há uma tela de **Estatísticas**, aberta por um botão no topo.
+- [x] Mostra os totais: jogos, vitórias, empates e derrotas, % de vitórias, média de defesas por jogo, média de gols sofridos por jogo e média da nota (de 30).
+- [x] Mostra a **evolução da nota** ao longo do tempo, em gráfico simples.
+- [x] Mostra o **desempenho por quadra**: jogos, vitórias e média da nota, das mais jogadas para as menos.
+- [x] Dá para escolher o período: este mês, este ano ou tudo.
+- [x] Com poucos jogos (menos de 3), mostra um aviso em vez de gráficos vazios.
+- [x] Os cálculos ficam em funções puras, com testes em `test/`.
 
 Decisões técnicas:
 - Gráficos desenhados em SVG, sem biblioteca externa.

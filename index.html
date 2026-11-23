@@ -20,6 +20,9 @@
       <h1>Goleiro</h1>
     </div>
     <div class="top-actions">
+      <button class="icon-btn" id="btnStats" aria-label="Estatísticas" title="Estatísticas">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>
+      </button>
       <button class="icon-btn" id="btnImport" aria-label="Importar prints" title="Importar vários prints">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h2l1.2-1.6A1 1 0 0 1 10 3h4a1 1 0 0 1 .8.4L16 5h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></svg>
       </button>
@@ -162,6 +165,31 @@
     </div>
   </dialog>
 
+  <!-- Estatísticas -->
+  <dialog id="statsSheet" class="sheet menu">
+    <div class="sheet-head">
+      <h2>Estatísticas</h2>
+      <button type="button" class="icon-btn" id="stClose" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div>
+      <div class="seg three" id="stPeriod">
+        <button type="button" data-m="month" aria-pressed="false">Este mês</button>
+        <button type="button" data-m="year" aria-pressed="false">Este ano</button>
+        <button type="button" data-m="all" aria-pressed="true">Tudo</button>
+      </div>
+      <div class="stats" id="stCards"></div>
+      <p class="hint" id="stNote" hidden></p>
+      <div id="stChartBox" class="st-box" hidden>
+        <h3>Nota ao longo do tempo <small id="stChartInfo"></small></h3>
+        <svg id="stChart" viewBox="0 0 320 170" role="img" aria-label="Gráfico da nota por jogo"></svg>
+      </div>
+      <div id="stVenueBox" class="st-box" hidden>
+        <h3>Por quadra</h3>
+        <div id="stVenues"></div>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Imagem para o Instagram -->
   <dialog id="shareSheet" class="sheet menu">
     <div class="sheet-head">
@@ -213,6 +241,7 @@
   <script src="games.js"></script>
   <script src="photos.js"></script>
   <script src="share-image.js"></script>
+  <script src="stats.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

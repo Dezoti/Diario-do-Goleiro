@@ -352,6 +352,74 @@
   });
   $('#fab').addEventListener('click', function () { openForm(); });
 
+  /* ---------- Estatísticas ---------- */
+  var statsSheet = $('#statsSheet'), statsMode = 'all';
+  var SVGNS = 'http://www.w3.org/2000/svg';
+
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function shortDate(iso) { var p = String(iso).split('-'); return p.length === 3 ? p[2] + '/' + p[1] : iso; }
+  function avgText(a, digits) { return a ? a.value.toLocaleString('pt-BR', { maximumFractionDigits: digits == null ? 1 : digits }) : '—'; }
+
+  function statCard(label, value, extra, good) {
+    return '<div class="stat' + (good ? ' good' : '') + '"><small>' + label + '</small><strong>' + value + (extra ? ' <i>' + extra + '</i>' : '') + '</strong></div>';
+  }
+
+  function drawChart(series) {
+    var svg = $('#stChart'), W = 320, H = 170, pad = { left: 28, right: 14, top: 16, bottom: 26 };
+    var shown = series.slice(-30);
+    var pts = GDAStats.chartPoints(shown, W, H, pad), html = '';
+    [0, 10, 20, 30].forEach(function (v) {
+      var y = pad.top + (H - pad.top - pad.bottom) * (1 - v / GDAStats.MAX_RATING);
+      html += '<line class="grid" x1="' + pad.left + '" x2="' + (W - pad.right) + '" y1="' + y + '" y2="' + y + '"/><text class="axis" x="' + (pad.left - 6) + '" y="' + (y + 3) + '" text-anchor="end">' + v + '</text>';
+    });
+    html += '<polyline class="line" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"/>';
+    var r = pts.length > 15 ? 2.5 : 4;
+    pts.forEach(function (p) { html += '<circle class="dot" cx="' + p.x + '" cy="' + p.y + '" r="' + r + '"/>'; });
+    var last = pts[pts.length - 1];
+    html += '<text class="last" x="' + Math.min(W - 16, Math.max(pad.left + 6, last.x)) + '" y="' + Math.max(11, last.y - 9) + '">' + last.rating + '</text>';
+    html += '<text class="axis" x="' + pad.left + '" y="' + (H - 6) + '">' + shortDate(pts[0].date) + '</text>';
+    html += '<text class="axis" x="' + (W - pad.right) + '" y="' + (H - 6) + '" text-anchor="end">' + shortDate(last.date) + '</text>';
+    svg.innerHTML = html;
+    $('#stChartInfo').textContent = series.length > shown.length ? '(últimos ' + shown.length + ' jogos)' : '';
+  }
+
+  function renderStatsSheet() {
+    $$('#stPeriod button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.m === statsMode ? 'true' : 'false'); });
+    var list = GDAStats.filterPeriod(games, statsMode, todayIso()), s = GDAStats.summarize(list);
+    var pct = s.winRate == null ? '—' : Math.round(s.winRate * 100);
+    $('#stCards').innerHTML =
+      statCard('Jogos', s.total) + statCard('Vitórias', s.wins, '', s.wins > 0) + statCard('% vitórias', pct, s.winRate == null ? '' : '%') +
+      statCard('Empates', s.draws) + statCard('Derrotas', s.losses) + statCard('Nota média', avgText(s.avgRating), s.avgRating ? '/30' : '') +
+      statCard('Defesas/jogo', avgText(s.avgSaves)) + statCard('Sofridos/jogo', avgText(s.avgConceded)) + statCard('Marcados/jogo', avgText(s.avgScored));
+
+    var note = $('#stNote'), enough = s.total >= GDAStats.MIN_GAMES;
+    note.hidden = enough;
+    note.textContent = s.total === 0 ? 'Nenhum jogo neste período.' : 'Poucos jogos neste período. Com 3 ou mais, aparecem o gráfico e o desempenho por quadra.';
+
+    var series = GDAStats.ratingSeries(list);
+    $('#stChartBox').hidden = !(enough && series.length >= 2);
+    if (enough && series.length >= 2) drawChart(series);
+
+    var venues = GDAStats.byVenue(list, GDAGames.venueKey).slice(0, 10);
+    $('#stVenueBox').hidden = !(enough && venues.length);
+    $('#stVenues').innerHTML = venues.map(function (v) {
+      var width = v.avgRating ? Math.round(Math.max(0, Math.min(1, v.avgRating.value / GDAStats.MAX_RATING)) * 100) : 0;
+      return '<div class="st-venue"><div class="st-venue-top"><span>' + esc(v.name) + '</span><span>' + (v.avgRating ? avgText(v.avgRating) + '/30' : '—') + '</span></div>' +
+        '<p>' + v.games + (v.games === 1 ? ' jogo' : ' jogos') + ' · ' + v.wins + (v.wins === 1 ? ' vitória' : ' vitórias') + '</p>' +
+        '<div class="st-bar"><i style="width:' + width + '%"></i></div></div>';
+    }).join('');
+  }
+
+  $('#btnStats').addEventListener('click', function () { renderStatsSheet(); statsSheet.showModal(); });
+  $('#stClose').addEventListener('click', function () { statsSheet.close(); });
+  $('#stPeriod').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    statsMode = b.dataset.m; renderStatsSheet();
+  });
+
   /* ---------- Imagem para o Instagram ---------- */
   var shareSheet = $('#shareSheet'), share = { game: null, format: 'story', picked: [], canvas: null, seq: 0 };
 
