@@ -25,7 +25,9 @@ parser.js     extrai os campos do texto lido do print (também roda no Node)
 sw.js         offline: rede primeiro, cache como reserva (subir a versão do cache ao mudar arquivos)
 manifest.webmanifest, icons/   instalação como app
 test/         testes do parser (node:test)
-docs/         documentos de apoio (marca)
+docs/         documentos de apoio (marca, quadro no GitHub)
+scripts/      criar-quadro.sh: cria labels, issues e o quadro (roda no computador do usuário)
+.github/      modelos de issue
 ROADMAP.md    backlog e ordem de trabalho
 ```
 

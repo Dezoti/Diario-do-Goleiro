@@ -24,28 +24,31 @@ Pronto quando:
 - [ ] Na importação de backup, jogos duplicados (com `id` diferente) são pulados e contados.
 - [ ] A regra fica em uma função pura (`findDuplicate`) com testes em `test/`.
 
-Pergunta em aberto: se o horário estiver vazio, o jogo bloqueia outro do mesmo dia sem horário? Sugestão: **não**, porque sem horário não dá para afirmar que é o mesmo jogo.
+**Decidido:** o jogo normalmente sempre terá horário. Se o horário estiver vazio, o jogo **não bloqueia** nem é bloqueado, porque sem horário não dá para afirmar que é o mesmo jogo.
 
-## 2. Foto no jogo — M
+## 2. Fotos no jogo — M
 
 Pronto quando:
-- [ ] O formulário tem o botão "Adicionar foto", que abre a câmera ou a galeria.
-- [ ] A foto é reduzida antes de salvar (lado maior de 1600 px, JPEG com qualidade em torno de 0,82) para não estourar o armazenamento.
-- [ ] A foto aparece como miniatura no cartão do jogo e em tamanho maior ao tocar. Dá para trocar e remover.
+- [ ] O formulário tem o botão "Adicionar fotos", que abre a câmera ou a galeria e aceita **várias fotos** por jogo.
+- [ ] Cada foto é reduzida antes de salvar (lado maior de 1600 px, JPEG com qualidade em torno de 0,82) para não estourar o armazenamento.
+- [ ] As fotos aparecem como miniaturas no formulário e no cartão do jogo (a primeira como capa). Tocar abre em tamanho maior. Dá para remover e reordenar.
 - [ ] Jogos antigos, sem foto, continuam funcionando.
+- [ ] O backup tem a opção **"incluir fotos"**. O padrão é exportar **sem** fotos; ao importar, jogos continuam com as fotos que já têm neste aparelho.
 
 Decisões técnicas:
-- O `localStorage` tem limite de cerca de 5 MB, então as fotos vão para o **IndexedDB**. O jogo guarda só uma referência (`photoId`).
-- **Backup:** fotos em base64 deixam o JSON enorme. Sugestão: o backup padrão não inclui fotos, e há uma opção "incluir fotos". Decidir na hora de fazer.
-- Uma foto por jogo (a "foto do dia"). Perguntar se vale permitir várias.
+- O `localStorage` tem limite de cerca de 5 MB, então as fotos vão para o **IndexedDB**. O jogo guarda só as referências (`photoIds`, uma lista).
+- Backup com fotos usa base64 dentro do JSON, o que deixa o arquivo grande. Por isso a opção é manual.
+- É no item 3 que o usuário escolhe quais fotos entram em cada imagem.
 
 ## 3. Imagem para Instagram — G
 
-Depende do item 2 (foto) e dos logotipos (item 4 e arquivos dos logos).
+Depende do item 2 (fotos) e dos logotipos (item 4 e arquivos dos logos).
 
 Pronto quando:
 - [ ] Na tela de um jogo há dois botões: **Gerar story** (1080 × 1920, 9:16) e **Gerar feed** (1080 × 1350, 4:5).
-- [ ] A imagem traz a **foto do dia**, o **placar**, o **nome da quadra** e os **logotipos do Goleiro de Aluguel e do Diário do Goleiro**.
+- [ ] Antes de gerar, o usuário **escolhe quais fotos do jogo** entram na imagem.
+- [ ] A imagem traz a(s) **foto(s) escolhida(s)**, o **placar**, o **nome da quadra**, o **resultado** conforme o placar (VITÓRIA) e os **logotipos do Goleiro de Aluguel e do Diário do Goleiro**.
+- [ ] Nenhum outro dado aparece (sem data, defesas ou nota).
 - [ ] Há uma pré-visualização antes de salvar.
 - [ ] O botão compartilhar usa o menu do celular (`navigator.share` com arquivo), com download como alternativa.
 - [ ] Sem foto, a imagem usa um fundo padrão da marca.
@@ -55,10 +58,9 @@ Decisões técnicas:
 - Texto sobre a foto com degradê escuro para manter a leitura.
 - No story, deixar livres as faixas do topo e do rodapé (as áreas cobertas pela interface do Instagram).
 - Fonte embutida no projeto, para a imagem sair igual em qualquer aparelho.
+- **Logotipos guardados no repositório**, em `assets/logos/` (PNG ou SVG com fundo transparente). O usuário vai carregar os arquivos.
 
-Perguntas em aberto:
-- A imagem mostra mais algum dado (data, resultado "VITÓRIA", defesas, nota)?
-- Onde ficam os logotipos? Opção A: arquivos em `assets/` no repositório. Opção B: o usuário carrega nas configurações do app e ficam só no aparelho. Como o repositório é público e o logo do Goleiro de Aluguel é de terceiros, confirmar se publicar esse arquivo é adequado.
+Para confirmar na hora de fazer: o texto de resultado segue o placar (VITÓRIA, EMPATE ou DERROTA). Se preferir que só vitórias mostrem o selo, é um ajuste pequeno.
 
 ## 4. Logotipo e marca — M
 
