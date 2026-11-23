@@ -41,18 +41,18 @@ Decisões técnicas:
 - Backup com fotos usa base64 dentro do JSON, o que deixa o arquivo grande. Por isso a opção é manual.
 - É no item 3 que o usuário escolhe quais fotos entram em cada imagem.
 
-## 3. Imagem para Instagram — G
+## 3. Imagem para Instagram — G ✅ feito (falta colocar os logotipos em `assets/logos/`)
 
 Depende do item 2 (fotos) e dos logotipos (item 4 e arquivos dos logos).
 
 Pronto quando:
-- [ ] Na tela de um jogo há dois botões: **Gerar story** (1080 × 1920, 9:16) e **Gerar feed** (1080 × 1350, 4:5).
-- [ ] Antes de gerar, o usuário **escolhe quais fotos do jogo** entram na imagem.
-- [ ] A imagem traz a(s) **foto(s) escolhida(s)**, o **placar**, o **nome da quadra**, o **resultado** conforme o placar (VITÓRIA) e os **logotipos do Goleiro de Aluguel e do Diário do Goleiro**.
-- [ ] Nenhum outro dado aparece (sem data, defesas ou nota).
-- [ ] Há uma pré-visualização antes de salvar.
-- [ ] O botão compartilhar usa o menu do celular (`navigator.share` com arquivo), com download como alternativa.
-- [ ] Sem foto, a imagem usa um fundo padrão da marca.
+- [x] Na tela de um jogo há dois botões: **Gerar story** (1080 × 1920, 9:16) e **Gerar feed** (1080 × 1350, 4:5).
+- [x] Antes de gerar, o usuário **escolhe quais fotos do jogo** entram na imagem.
+- [x] A imagem traz a(s) **foto(s) escolhida(s)**, o **placar**, o **nome da quadra**, o **resultado** conforme o placar (VITÓRIA) e os **logotipos do Goleiro de Aluguel e do Diário do Goleiro**.
+- [x] Nenhum outro dado aparece (sem data, defesas ou nota).
+- [x] Há uma pré-visualização antes de salvar.
+- [x] O botão compartilhar usa o menu do celular (`navigator.share` com arquivo), com download como alternativa.
+- [x] Sem foto, a imagem usa um fundo padrão da marca.
 
 Decisões técnicas:
 - Desenho em `<canvas>` e exportação em PNG. Sem servidor.

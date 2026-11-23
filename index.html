@@ -111,6 +111,15 @@
         </div>
       </div>
 
+      <div class="field" id="igField" hidden>
+        <span>Imagem para o Instagram</span>
+        <div class="photo-actions">
+          <button type="button" class="btn-sm" id="btnStory">Gerar story</button>
+          <button type="button" class="btn-sm" id="btnFeed">Gerar feed</button>
+        </div>
+        <small class="hint" id="igHint"></small>
+      </div>
+
       <label class="field"><span>Observações</span><textarea id="fNotes" rows="3" placeholder="Como foi o jogo?"></textarea></label>
 
       <div class="dup-alert" id="dupAlert" role="alert" hidden>
@@ -153,6 +162,30 @@
     </div>
   </dialog>
 
+  <!-- Imagem para o Instagram -->
+  <dialog id="shareSheet" class="sheet menu">
+    <div class="sheet-head">
+      <h2>Imagem para o Instagram</h2>
+      <button type="button" class="icon-btn" id="shClose" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div>
+      <div class="seg two" id="shFormat">
+        <button type="button" data-f="story" aria-pressed="true">Story · 9:16</button>
+        <button type="button" data-f="feed" aria-pressed="false">Feed · 4:5</button>
+      </div>
+      <div class="field" id="shPhotosField">
+        <span>Fotos na imagem <small id="shCount"></small></span>
+        <div class="photo-grid" id="shPhotos"></div>
+        <small class="hint">Toque para escolher (até 4). A ordem de toque é a ordem na imagem.</small>
+      </div>
+      <div class="preview"><canvas id="shPreview" aria-label="Pré-visualização"></canvas></div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" id="shDownload">Baixar</button>
+      <button type="button" class="btn primary" id="shShare">Compartilhar</button>
+    </div>
+  </dialog>
+
   <!-- Visualizador de fotos -->
   <dialog id="viewer" class="viewer">
     <div class="viewer-top">
@@ -179,6 +212,7 @@
   <script src="parser.js"></script>
   <script src="games.js"></script>
   <script src="photos.js"></script>
+  <script src="share-image.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

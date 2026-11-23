@@ -9,6 +9,7 @@
   var RESULT_LABEL = { V: 'Vitória', E: 'Empate', D: 'Derrota' };
 
   var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
   var games = load();
   var filter = 'all';
   var editingId = null;
@@ -193,6 +194,7 @@
     var photoIds = Array.isArray(g.photoIds) ? g.photoIds.slice() : [];
     draft = { concededAuto: !isNum(g.goalsConceded), photoIds: photoIds, originalPhotoIds: photoIds.slice(), newPhotoIds: [], finished: false };
     renderPhotoGrid();
+    updateInstagramField(id ? g : null);
     setResult(g.result);
     ['goalsScored', 'goalsConceded', 'saves'].forEach(function (k) { setStepper(k, isNum(g[k]) ? g[k] : null); });
     hideDup();
@@ -337,6 +339,98 @@
     filter = b.dataset.f; renderChips(); renderList();
   });
   $('#fab').addEventListener('click', function () { openForm(); });
+
+  /* ---------- Imagem para o Instagram ---------- */
+  var shareSheet = $('#shareSheet'), share = { game: null, format: 'story', picked: [], canvas: null, seq: 0 };
+
+  function updateInstagramField(g) {
+    var field = $('#igField');
+    field.hidden = !g;
+    if (!g) return;
+    var ready = isNum(g.scoreFor) && isNum(g.scoreAgainst);
+    $('#btnStory').disabled = !ready; $('#btnFeed').disabled = !ready;
+    $('#igHint').textContent = ready ? 'Usa o jogo como está salvo. Salve antes para incluir mudanças.'
+                                     : 'Preencha o placar e salve o jogo para gerar a imagem.';
+  }
+
+  function openShare(format) {
+    var g = games.filter(function (x) { return x.id === editingId; })[0];
+    if (!g) return;
+    share.game = g; share.format = format;
+    share.picked = (g.photoIds || []).slice(0, 1); // começa com a capa
+    paintShare(true);
+    shareSheet.showModal();
+  }
+
+  async function paintShare(rebuildPicker) {
+    var ids = share.game.photoIds || [], my = ++share.seq;
+    $$('#shFormat button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.f === share.format ? 'true' : 'false'); });
+    $('#shPhotosField').hidden = !ids.length;
+    if (rebuildPicker) {
+      $('#shPhotos').innerHTML = ids.map(function (id) {
+        return '<button type="button" class="ph pick" data-id="' + esc(id) + '" aria-pressed="false"><img data-photo="' + esc(id) + '" alt=""><span class="ph-num" hidden></span></button>';
+      }).join('');
+      hydratePhotos($('#shPhotos'));
+    }
+    $$('#shPhotos .ph').forEach(function (b) {
+      var n = share.picked.indexOf(b.dataset.id), tag = b.querySelector('.ph-num');
+      b.setAttribute('aria-pressed', n >= 0 ? 'true' : 'false');
+      tag.hidden = n < 0; tag.textContent = n + 1;
+    });
+    $('#shCount').textContent = ids.length ? '(' + share.picked.length + ' de ' + GDAShareImage.MAX_PHOTOS + ')' : '';
+
+    var bitmaps = [];
+    for (var i = 0; i < share.picked.length; i++) {
+      try {
+        var rec = await GDAPhotos.get(share.picked[i]);
+        if (rec) bitmaps.push(await GDAPhotos.decodeImage(rec.blob));
+      } catch (e) { console.warn('Foto fora da imagem:', e && (e.message || e)); }
+    }
+    var canvas = await GDAShareImage.render(share.game, { format: share.format, bitmaps: bitmaps });
+    if (my !== share.seq) return; // escolha mudou enquanto desenhava
+    share.canvas = canvas;
+    var view = $('#shPreview'); view.width = canvas.width; view.height = canvas.height;
+    view.getContext('2d').drawImage(canvas, 0, 0);
+  }
+
+  $('#btnStory').addEventListener('click', function () { openShare('story'); });
+  $('#btnFeed').addEventListener('click', function () { openShare('feed'); });
+  $('#shClose').addEventListener('click', function () { shareSheet.close(); });
+  $('#shFormat').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b || b.dataset.f === share.format) return;
+    share.format = b.dataset.f; paintShare(false);
+  });
+  $('#shPhotos').addEventListener('click', function (e) {
+    var b = e.target.closest('.ph'); if (!b) return;
+    var id = b.dataset.id, at = share.picked.indexOf(id);
+    if (at >= 0) share.picked.splice(at, 1);
+    else if (share.picked.length >= GDAShareImage.MAX_PHOTOS) { toast('No máximo ' + GDAShareImage.MAX_PHOTOS + ' fotos na imagem.'); return; }
+    else share.picked.push(id);
+    paintShare(false);
+  });
+
+  async function currentFile() {
+    if (!share.canvas) await paintShare(false);
+    var blob = await GDAShareImage.toBlob(share.canvas);
+    return new File([blob], GDAShareImage.fileName(share.game, share.format), { type: 'image/png' });
+  }
+  function saveFile(file) {
+    var a = document.createElement('a'), u = URL.createObjectURL(file);
+    a.href = u; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+  }
+  $('#shDownload').addEventListener('click', async function () {
+    try { saveFile(await currentFile()); toast('Imagem baixada.'); } catch (e) { toast('Não consegui gerar a imagem.'); }
+  });
+  $('#shShare').addEventListener('click', async function () {
+    try {
+      var file = await currentFile();
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); }
+        catch (e) { if (e && e.name === 'AbortError') return; throw e; }
+      } else { saveFile(file); toast('Este aparelho não abre o menu de compartilhar. A imagem foi baixada.'); }
+    } catch (e) { toast('Não consegui compartilhar. Tente "Baixar".'); }
+  });
 
   /* ---------- Fotos do jogo ---------- */
   var viewer = $('#viewer'), viewerIdx = 0;
