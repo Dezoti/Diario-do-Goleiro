@@ -61,7 +61,7 @@ Pronto quando:
 - [x] Sem foto, a imagem usa um fundo padrão da marca.
 
 Decisões técnicas:
-- Desenho em `<canvas>` e exportação em PNG. Sem servidor.
+- Desenho em `<canvas>` e exportação em JPEG (qualidade 0,92; era PNG, ficava pesado com foto). Sem servidor.
 - Texto sobre a foto com degradê escuro para manter a leitura.
 - No story, deixar livres as faixas do topo e do rodapé (as áreas cobertas pela interface do Instagram).
 - Fonte embutida no projeto, para a imagem sair igual em qualquer aparelho.

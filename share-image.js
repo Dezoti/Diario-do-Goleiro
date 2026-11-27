@@ -51,7 +51,7 @@
   }
 
   function fileName(g, format) {
-    return 'jogo-' + (g && g.date ? g.date : 'sem-data') + '-' + format + '.png';
+    return 'jogo-' + (g && g.date ? g.date : 'sem-data') + '-' + format + '.jpg';
   }
 
   /* ---------- Resumo do período ---------- */
@@ -67,7 +67,7 @@
     var p = String(today).split('-');
     return mode === 'month' ? p[0] + '-' + p[1] : p[0];
   }
-  function summaryFileName(mode, today, format) { return 'resumo-' + periodSlug(mode, today) + '-' + format + '.png'; }
+  function summaryFileName(mode, today, format) { return 'resumo-' + periodSlug(mode, today) + '-' + format + '.jpg'; }
 
   function plural(n, one, many) { return n === 1 ? one : many; }
   // Linhas do resumo: só jogos, vitórias, empates, derrotas e defesas. Defesas somem se nenhum jogo tiver o dado.
@@ -160,13 +160,47 @@
     return lines;
   }
 
+  // Sombra que some sem deixar borda: vários pontos de cor seguindo uma curva, não uma linha reta.
+  function easedStops(grad, a0, a1, rgb) {
+    rgb = rgb || '0,0,0';
+    for (var i = 0; i <= 10; i++) {
+      var t = i / 10, e = t * t * (3 - 2 * t); // suave no começo e no fim
+      grad.addColorStop(t, 'rgba(' + rgb + ',' + (a0 + (a1 - a0) * e).toFixed(3) + ')');
+    }
+    return grad;
+  }
+
+  // Sem foto: o gol visto de frente, com a rede, sob uma luz de estádio.
   function drawBackground(ctx, W, H) {
-    var g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#0f3d22'); g.addColorStop(1, '#04140b');
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#0d3a20'); g.addColorStop(0.55, '#082a17'); g.addColorStop(1, '#03110a');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(W / 2, H / 2, W * 0.26, 0, Math.PI * 2); ctx.stroke();
+    var glow = ctx.createRadialGradient(W * 0.5, 0, 0, W * 0.5, 0, H * 0.75);
+    ctx.fillStyle = easedStops(glow, 0.22, 0, '61,220,132'); ctx.fillRect(0, 0, W, H);
+
+    var gw = Math.round(W * 0.78), gh = Math.round(gw * 0.42);
+    var gx = Math.round((W - gw) / 2), ground = Math.round(H * 0.665), gy = ground - gh;
+    // Rede em losango, mais forte no meio e sumindo nas bordas
+    ctx.save();
+    ctx.beginPath(); ctx.rect(gx, gy, gw, gh); ctx.clip();
+    ctx.strokeStyle = 'rgba(255,255,255,.075)'; ctx.lineWidth = 2;
+    var step = 46;
+    for (var d = -gh; d < gw + gh; d += step) {
+      ctx.beginPath(); ctx.moveTo(gx + d, gy); ctx.lineTo(gx + d + gh, ground); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(gx + d, gy); ctx.lineTo(gx + d - gh, ground); ctx.stroke();
+    }
+    var fade = ctx.createLinearGradient(0, gy, 0, ground);
+    fade.addColorStop(0, 'rgba(8,42,23,0)'); fade.addColorStop(1, 'rgba(8,42,23,.55)');
+    ctx.fillStyle = fade; ctx.fillRect(gx, gy, gw, gh);
+    ctx.restore();
+    // Linha de fundo, sumindo nas laterais
+    var gl = ctx.createLinearGradient(0, 0, W, 0);
+    gl.addColorStop(0, 'rgba(255,255,255,0)'); gl.addColorStop(0.5, 'rgba(255,255,255,.12)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.strokeStyle = gl; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(0, ground); ctx.lineTo(W, ground); ctx.stroke();
+    // Traves e travessão
+    ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 16; ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(gx, ground); ctx.lineTo(gx, gy); ctx.lineTo(gx + gw, gy); ctx.lineTo(gx + gw, ground); ctx.stroke();
   }
   function drawPhotos(ctx, W, H, bitmaps) {
     var slots = photoSlots(bitmaps.length, W, H);
@@ -179,11 +213,9 @@
   // Sombras só onde há texto ou logo: topo (placar) e canto inferior esquerdo (logotipos).
   function drawShade(ctx, W, H, topEnd, logoTop) {
     var top = ctx.createLinearGradient(0, 0, 0, topEnd);
-    top.addColorStop(0, 'rgba(0,0,0,.6)'); top.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = top; ctx.fillRect(0, 0, W, topEnd);
+    ctx.fillStyle = easedStops(top, 0.6, 0); ctx.fillRect(0, 0, W, topEnd);
     var from = logoTop - 140, bot = ctx.createLinearGradient(0, from, 0, H);
-    bot.addColorStop(0, 'rgba(0,0,0,0)'); bot.addColorStop(1, 'rgba(0,0,0,.7)');
-    ctx.fillStyle = bot; ctx.fillRect(0, from, W, H - from);
+    ctx.fillStyle = easedStops(bot, 0, 0.7); ctx.fillRect(0, from, W, H - from);
   }
 
   // Desenha o logo encostado na esquerda (x) com a base em yBottom. Devolve a altura usada.
@@ -226,8 +258,7 @@
     if (leftShade) { // escurece em volta do texto com bordas suaves (sobre foto clara o texto continua legível)
       var cy = (st.fmt.safeTop + blockBottom) / 2, rad = Math.max(blockBottom - st.fmt.safeTop, st.W) * 0.75;
       var rg = ctx.createRadialGradient(0, cy, 0, 0, cy, rad);
-      rg.addColorStop(0, 'rgba(0,0,0,.6)'); rg.addColorStop(0.6, 'rgba(0,0,0,.35)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = rg; ctx.fillRect(0, 0, st.W, st.H);
+      ctx.fillStyle = easedStops(rg, 0.6, 0); ctx.fillRect(0, 0, st.W, st.H);
     }
     drawLogoLeft(ctx, st.logoA, 'GOLEIRO DE ALUGUEL', st.M, logosTop + hA, LW, LH);
     drawLogoLeft(ctx, st.logoB, 'DIÁRIO DO GOLEIRO', st.M, base, LW, LH);
@@ -236,8 +267,10 @@
   // game: jogo salvo. opts: { format: 'story'|'feed', bitmaps: [ImageBitmap|HTMLImageElement] }
   async function render(game, opts) {
     var st = await setup(opts), ctx = st.ctx, fmt = st.fmt, W = st.W, M = st.M;
+    // Sem foto não há nada disputando espaço: o placar cresce.
+    var big = !st.hasPhoto, scoreMax = big ? 230 : 170, markSize = big ? 76 : 62;
     // Os logos e as sombras vão por baixo do texto, que é desenhado depois.
-    finishCommon(st, fmt.safeTop + 330, false);
+    finishCommon(st, fmt.safeTop + (big ? 400 : 330), false);
 
     // Placar no topo, alinhado à esquerda e levemente inclinado, como um adesivo.
     var r2 = resultFromScore(game);
@@ -248,11 +281,11 @@
     ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 18;
     var y = 0;
     if (r2) {
-      ctx.font = '400 62px ' + MARKER; ctx.fillStyle = r2.color;
-      ctx.fillText(r2.label.charAt(0) + r2.label.slice(1).toLowerCase() + '!', 0, y + 56); y += 84;
+      ctx.font = '400 ' + markSize + 'px ' + MARKER; ctx.fillStyle = r2.color;
+      ctx.fillText(r2.label.charAt(0) + r2.label.slice(1).toLowerCase() + '!', 0, y + markSize * 0.9); y += markSize * 1.35;
     }
     if (score) {
-      var ss = shrinkFont(ctx, score, 700, 170, W - 2 * M);
+      var ss = shrinkFont(ctx, score, 700, scoreMax, W - 2 * M);
       ctx.font = '700 ' + ss + 'px ' + FONT; ctx.fillStyle = '#fff';
       ctx.fillText(score, -4, y + ss * 0.84); y += ss * 0.84 + 30;
     }
@@ -311,15 +344,18 @@
     return st.c;
   }
 
+  // JPEG de alta qualidade: bem mais leve que PNG com foto, e o Instagram recomprime de qualquer jeito.
+  var MIME = 'image/jpeg';
   function toBlob(canvas) {
     return new Promise(function (resolve, reject) {
-      canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error('imagem')); }, 'image/png');
+      canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error('imagem')); }, MIME, 0.92);
     });
   }
 
   api.render = render;
   api.renderSummary = renderSummary;
   api.toBlob = toBlob;
+  api.MIME = MIME;
   api.loadFont = loadFont;
   root.GDAShareImage = api;
 })(typeof window !== 'undefined' ? window : globalThis);

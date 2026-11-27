@@ -72,23 +72,25 @@
     var rating = avg('rating'), conc = avg('goalsConceded');
     var pct = function (n) { return decided ? (n / decided) * 100 : 0; };
 
+    var rec = function (k, label) {
+      return '<div class="' + k.toLowerCase() + (c[k] ? '' : ' zero') + '"><strong>' + c[k] + '</strong><small>' + label + '</small></div>';
+    };
+    var seg = function (k) { return c[k] ? '<i class="' + k.toLowerCase() + '" style="flex:' + c[k] + '"></i>' : ''; };
     $('#stats').innerHTML =
-      '<div class="stat hero">' +
-        '<div class="record">' +
-          '<div class="v"><small>Vitórias</small><strong>' + c.V + '</strong></div>' +
-          '<div class="e"><small>Empates</small><strong>' + c.E + '</strong></div>' +
-          '<div class="d"><small>Derrotas</small><strong>' + c.D + '</strong></div>' +
-        '</div>' +
-        '<div class="bar-result" aria-hidden="true">' +
-          '<i class="v" style="width:' + pct(c.V) + '%"></i><i class="e" style="width:' + pct(c.E) + '%"></i><i class="d" style="width:' + pct(c.D) + '%"></i>' +
-        '</div>' +
+      '<div class="board">' +
+        '<div class="board-head"><span class="label">Retrospecto</span>' +
+          (decided ? '<span class="board-pct"><b>' + Math.round(pct(c.V)) + '%</b> de vitórias</span>' : '') + '</div>' +
+        '<div class="record">' + rec('V', 'Vitórias') + rec('E', 'Empates') + rec('D', 'Derrotas') + '</div>' +
+        '<div class="bar-result" aria-hidden="true">' + seg('V') + seg('E') + seg('D') + '</div>' +
       '</div>' +
+      '<div class="metrics">' +
       tile('Jogos', games.length) +
       tile('Nota média', rating == null ? '–' : fmt(rating) + ' <i>/30</i>') +
       tile('Defesas', sum('saves')) +
       tile('Gols sofridos', sum('goalsConceded')) +
       tile('Sofridos/jogo', conc == null ? '–' : fmt(conc)) +
-      tile('Gols marcados', sum('goalsScored'));
+      tile('Gols marcados', sum('goalsScored')) +
+      '</div>';
   }
   function tile(label, value) {
     return '<div class="stat"><small>' + label + '</small><strong>' + value + '</strong></div>';
@@ -117,13 +119,13 @@
     $('#chips').hidden = games.length === 0;
     $('#list').innerHTML = list.map(card).join('');
     if (games.length && !list.length) {
-      $('#list').innerHTML = '<p class="hint" style="text-align:center;padding:30px 0">Nenhum jogo neste filtro.</p>';
+      $('#list').innerHTML = '<p class="list-empty">Nenhum jogo neste filtro.</p>';
     }
   }
 
   function card(g) {
     var d = g.date ? parseISO(g.date) : null;
-    var cls = g.result ? g.result.toLowerCase() : '';
+    var cls = g.result ? g.result.toLowerCase() : 'pend';
     var sub = [g.time, g.fieldType].filter(Boolean).join(' · ');
     var tags = '';
     if (g.opponentKeeper) tags += '<span class="tag">vs ' + esc(g.opponentKeeper) + '</span>';
@@ -132,10 +134,10 @@
     if (isNum(g.goalsScored) && g.goalsScored > 0) tags += '<span class="tag">' + g.goalsScored + ' gol' + (g.goalsScored === 1 ? '' : 's') + '</span>';
 
     var main;
-    if (isNum(g.scoreFor) && isNum(g.scoreAgainst)) main = '<span class="score-pill">' + g.scoreFor + '×' + g.scoreAgainst + '</span>';
+    if (isNum(g.scoreFor) && isNum(g.scoreAgainst)) main = '<span class="score-pill">' + g.scoreFor + '<i>×</i>' + g.scoreAgainst + '</span>';
     else if (g.result) main = '<span class="score-pill">' + g.result + '</span>';
     else main = '<span class="pending">Completar</span>';
-    var rating = isNum(g.rating) ? '<span class="rating-pill">' + g.rating + '/30</span>' : '';
+    var rating = isNum(g.rating) ? '<span class="rating-pill">Nota <b>' + g.rating + '</b>/30</span>' : '';
 
     return '<div class="card ' + cls + '" role="button" tabindex="0" data-id="' + esc(g.id) + '">' +
       '<div class="date"><b>' + (d ? d.getDate() : '–') + '</b><small>' + (d ? WEEKDAYS[d.getDay()] + ' ' + MONTHS[d.getMonth()] : '') + '</small></div>' +
@@ -162,6 +164,16 @@
 
   function render() { renderStats(); renderChips(); renderList(); hydratePhotos($('#list')); }
 
+  // O jogo que acabou de ser salvo entra no lugar dele, para o olho achar onde foi parar.
+  function markNew(id) {
+    var el = document.querySelector('#list .card[data-id="' + id + '"]');
+    if (!el) return;
+    el.classList.add('is-new');
+    el.addEventListener('animationend', function () { el.classList.remove('is-new'); }, { once: true });
+    var r = el.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > innerHeight - 110) el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+
   /* ---------- Formulário ---------- */
   var sheet = $('#sheet');
 
@@ -173,7 +185,9 @@
   }
   function setStepper(key, v) {
     draft[key] = v;
-    document.querySelector('.stepper[data-key="' + key + '"] output').textContent = v == null ? '–' : v;
+    var out = document.querySelector('.stepper[data-key="' + key + '"] output');
+    out.textContent = v == null ? '–' : v;
+    out.classList.toggle('is-empty', v == null);
   }
 
   // Quadras já usadas viram sugestões; escolher (ou digitar igual) mantém o nome já salvo e traz o tipo de campo.
@@ -309,6 +323,7 @@
       .forEach(function (id) { GDAPhotos.remove(id); });
     closeForm(true);
     render();
+    if (!editingId) markNew(data.id);
     toast(editingId ? 'Jogo atualizado.' : 'Jogo salvo.');
   });
 
@@ -375,9 +390,12 @@
       var y = pad.top + (H - pad.top - pad.bottom) * (1 - v / GDAStats.MAX_RATING);
       html += '<line class="grid" x1="' + pad.left + '" x2="' + (W - pad.right) + '" y1="' + y + '" y2="' + y + '"/><text class="axis" x="' + (pad.left - 6) + '" y="' + (y + 3) + '" text-anchor="end">' + v + '</text>';
     });
-    html += '<polyline class="line" points="' + pts.map(function (p) { return p.x + ',' + p.y; }).join(' ') + '"/>';
-    var r = pts.length > 15 ? 2.5 : 4;
-    pts.forEach(function (p) { html += '<circle class="dot" cx="' + p.x + '" cy="' + p.y + '" r="' + r + '"/>'; });
+    var line = pts.map(function (p) { return p.x + ',' + p.y; }).join(' '), base = H - pad.bottom;
+    html += '<defs><linearGradient id="stFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22d35a" stop-opacity=".22"/><stop offset="1" stop-color="#22d35a" stop-opacity="0"/></linearGradient></defs>';
+    html += '<polygon class="area" points="' + pts[0].x + ',' + base + ' ' + line + ' ' + pts[pts.length - 1].x + ',' + base + '"/>';
+    html += '<polyline class="line" points="' + line + '"/>';
+    var r = pts.length > 15 ? 2.5 : 3.5;
+    pts.forEach(function (p, i) { html += '<circle class="dot' + (i === pts.length - 1 ? ' end' : '') + '" cx="' + p.x + '" cy="' + p.y + '" r="' + r + '"/>'; });
     var last = pts[pts.length - 1];
     html += '<text class="last" x="' + Math.min(W - 16, Math.max(pad.left + 6, last.x)) + '" y="' + Math.max(11, last.y - 9) + '">' + last.rating + '</text>';
     html += '<text class="axis" x="' + pad.left + '" y="' + (H - 6) + '">' + shortDate(pts[0].date) + '</text>';
@@ -430,7 +448,7 @@
       .forEach(function (g) { (g.photoIds || []).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); }); });
     share.kind = 'summary'; share.game = null; share.format = format;
     share.data = { mode: statsMode, today: today, summary: GDAStats.summarize(list) };
-    share.photoIds = ids.slice(0, 24); share.max = 1; share.picked = [];
+    share.photoIds = ids.slice(0, 24); share.max = 1; share.picked = []; share.canvas = null;
     $('#shTitle').textContent = 'Resumo para o Instagram';
     $('#shHint').textContent = 'Toque numa foto para usar de fundo (opcional). Toque de novo para tirar.';
     paintShare(true);
@@ -463,7 +481,7 @@
     var g = games.filter(function (x) { return x.id === editingId; })[0];
     if (!g) return;
     share.kind = 'game'; share.game = g; share.data = null; share.format = format;
-    share.photoIds = (g.photoIds || []).slice(); share.max = GDAShareImage.MAX_PHOTOS;
+    share.photoIds = (g.photoIds || []).slice(); share.max = GDAShareImage.MAX_PHOTOS; share.canvas = null;
     share.picked = share.photoIds.slice(0, 1); // começa com a capa
     $('#shTitle').textContent = 'Imagem do jogo';
     $('#shHint').textContent = 'Toque para escolher (até 4). A ordem de toque é a ordem na imagem.';
@@ -472,7 +490,9 @@
   }
 
   async function paintShare(rebuildPicker) {
-    var ids = share.photoIds, my = ++share.seq;
+    var ids = share.photoIds, my = ++share.seq, view = $('#shPreview');
+    // Ao trocar formato ou foto, a prévia atual esmaece e a nova entra nítida: lê como uma imagem só mudando.
+    if (!rebuildPicker && share.canvas) view.classList.add('is-updating');
     $$('#shFormat button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.f === share.format ? 'true' : 'false'); });
     $('#shPhotosField').hidden = !ids.length;
     if (rebuildPicker) {
@@ -500,8 +520,9 @@
       : await GDAShareImage.render(share.game, { format: share.format, bitmaps: bitmaps });
     if (my !== share.seq) return; // escolha mudou enquanto desenhava
     share.canvas = canvas;
-    var view = $('#shPreview'); view.width = canvas.width; view.height = canvas.height;
+    view.width = canvas.width; view.height = canvas.height;
     view.getContext('2d').drawImage(canvas, 0, 0);
+    view.classList.remove('is-updating');
   }
 
   $('#btnStory').addEventListener('click', function () { openShare('story'); });
@@ -526,7 +547,7 @@
     var blob = await GDAShareImage.toBlob(share.canvas);
     var name = share.kind === 'summary' ? GDAShareImage.summaryFileName(share.data.mode, share.data.today, share.format)
                                         : GDAShareImage.fileName(share.game, share.format);
-    return new File([blob], name, { type: 'image/png' });
+    return new File([blob], name, { type: GDAShareImage.MIME });
   }
   function saveFile(file) {
     var a = document.createElement('a'), u = URL.createObjectURL(file);

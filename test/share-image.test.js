@@ -46,7 +46,7 @@ test('fitBox mantém a proporção dentro do limite', () => {
 });
 
 test('nome do arquivo', () => {
-  assert.strictEqual(S.fileName({ date: '2026-11-22' }, 'story'), 'jogo-2026-11-22-story.png');
+  assert.strictEqual(S.fileName({ date: '2026-11-22' }, 'story'), 'jogo-2026-11-22-story.jpg');
 });
 
 /* ---------- Resumo do período ---------- */
@@ -57,8 +57,8 @@ test('título do período: mês com ano embaixo, ou só o ano', () => {
 });
 
 test('nome do arquivo do resumo', () => {
-  assert.strictEqual(S.summaryFileName('month', '2026-11-23', 'story'), 'resumo-2026-11-story.png');
-  assert.strictEqual(S.summaryFileName('year', '2026-11-23', 'feed'), 'resumo-2026-feed.png');
+  assert.strictEqual(S.summaryFileName('month', '2026-11-23', 'story'), 'resumo-2026-11-story.jpg');
+  assert.strictEqual(S.summaryFileName('year', '2026-11-23', 'feed'), 'resumo-2026-feed.jpg');
 });
 
 test('linhas do resumo: só jogos, vitórias, empates, derrotas e defesas', () => {
